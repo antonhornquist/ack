@@ -282,7 +282,7 @@ Engine_Ack : CroneEngine {
 					interpolation: 4
 				); // TODO: tryout BLBufRd
 		
-				var killEnv = EnvGen.ar(Env.cutoff(0.01), gate, doneAction: Done.freeSelf);
+				var killEnv = EnvGen.ar(Env.cutoff(0.01), gate, doneAction: Done.freeSelf); // TODO: move to volumeEnv and release with -1
 				var volumeEnv = EnvGen.ar(Env.perc(volumeEnvAttack, volumeEnvRelease), doneAction: Done.freeSelf);
 				var filterEnv = EnvGen.ar(Env.perc(filterEnvAttack, filterEnvRelease, filterEnvMod));
 		
