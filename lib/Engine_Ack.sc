@@ -161,7 +161,7 @@ Engine_Ack : CroneEngine {
 
 				sig = sig * (((fwdOneshotPhaseDone < 1) + (loopEnable > 0)) > 0); // basically: as long as direction is forward and phaseFromStart < sampleEnd or loopEnable == 1, continue playing (audition sound)
 				sig = sig * (((revOneshotPhaseDone < 1) + (loopEnable > 0)) > 0); // basically: as long as direction is backward and phaseFromStart > sampleEnd or loopEnable == 1, continue playing (audition sound)
-				
+
 				sig = Decimator.ar(sig, sampleRate, bitDepth);
 				sig = Select.ar(dist > 0, [sig, (sig * (1 + (dist * 10))).tanh.softclip]);
 
@@ -309,7 +309,7 @@ Engine_Ack : CroneEngine {
 
 				sig = sig * (((fwdOneshotPhaseDone < 1) + (loopEnable > 0)) > 0); // basically: as long as direction is forward and phaseFromStart < sampleEnd or loopEnable == 1, continue playing (audition sound)
 				sig = sig * (((revOneshotPhaseDone < 1) + (loopEnable > 0)) > 0); // basically: as long as direction is backward and phaseFromStart > sampleEnd or loopEnable == 1, continue playing (audition sound)
-				
+
 				sig = Decimator.ar(sig, sampleRate, bitDepth);
 				sig = Select.ar(dist > 0, [sig, (sig * (1 + (dist * 10))).tanh.softclip]);
 
@@ -705,11 +705,11 @@ Engine_Ack : CroneEngine {
 	cmdSampleRate { |channelnum, f|
 		channelControlBusses[channelnum][\sampleRate].set(channelSpecs[\sampleRate].constrain(f));
 	}
-	
+
 	cmdBitDepth { |channelnum, f|
 		channelControlBusses[channelnum][\bitDepth].set(channelSpecs[\bitDepth].constrain(f));
 	}
-	
+
 	cmdDist { |channelnum, f|
 		channelControlBusses[channelnum][\dist].set(channelSpecs[\dist].constrain(f));
 	}
