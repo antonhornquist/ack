@@ -60,6 +60,8 @@ Engine_Ack : CroneEngine {
 		channelSpecs[\filterNotchLevel] = ControlSpec(0, 1, step: 1, default: 0);
 		channelSpecs[\filterPeakLevel] = ControlSpec(0, 1, step: 1, default: 0);
 		channelSpecs[\filterEnvMod] = \bipolar.asSpec;
+		channelSpecs[\sampleRate] = ControlSpec(0, 44100.0, default: 44100.0);
+		channelSpecs[\bitDepth] = ControlSpec(0, 31, default: 31);
 		channelSpecs[\dist] = \unipolar.asSpec;
 		// TODO slewSpec = ControlSpec(0, 5, default: 0);
 
@@ -100,6 +102,8 @@ Engine_Ack : CroneEngine {
 				filterEnvAttack,
 				filterEnvRelease,
 				filterEnvMod,
+				sampleRate,
+				bitDepth,
 				dist,
 				delaySend,
 				reverbSend
@@ -158,6 +162,7 @@ Engine_Ack : CroneEngine {
 				sig = sig * (((fwdOneshotPhaseDone < 1) + (loopEnable > 0)) > 0); // basically: as long as direction is forward and phaseFromStart < sampleEnd or loopEnable == 1, continue playing (audition sound)
 				sig = sig * (((revOneshotPhaseDone < 1) + (loopEnable > 0)) > 0); // basically: as long as direction is backward and phaseFromStart > sampleEnd or loopEnable == 1, continue playing (audition sound)
 				
+				sig = Decimator.ar(sig, sampleRate, bitDepth);
 				sig = Select.ar(dist > 0, [sig, (sig * (1 + (dist * 10))).tanh.softclip]);
 
 				sig = SVF.ar(
@@ -200,6 +205,8 @@ Engine_Ack : CroneEngine {
 					filterEnvAttack: channelSpecs[\filterEnvAttack],
 					filterEnvRelease: channelSpecs[\filterEnvRelease],
 					filterEnvMod: channelSpecs[\filterEnvMod],
+					sampleRate: channelSpecs[\sampleRate],
+					bitDepth: channelSpecs[\bitDepth],
 					dist: channelSpecs[\dist],
 					delaySend: channelSpecs[\delaySend],
 					reverbSend: channelSpecs[\reverbSend]
@@ -243,6 +250,8 @@ Engine_Ack : CroneEngine {
 				filterEnvAttack,
 				filterEnvRelease,
 				filterEnvMod,
+				sampleRate,
+				bitDepth,
 				dist,
 				delaySend,
 				reverbSend
@@ -301,6 +310,7 @@ Engine_Ack : CroneEngine {
 				sig = sig * (((fwdOneshotPhaseDone < 1) + (loopEnable > 0)) > 0); // basically: as long as direction is forward and phaseFromStart < sampleEnd or loopEnable == 1, continue playing (audition sound)
 				sig = sig * (((revOneshotPhaseDone < 1) + (loopEnable > 0)) > 0); // basically: as long as direction is backward and phaseFromStart > sampleEnd or loopEnable == 1, continue playing (audition sound)
 				
+				sig = Decimator.ar(sig, sampleRate, bitDepth);
 				sig = Select.ar(dist > 0, [sig, (sig * (1 + (dist * 10))).tanh.softclip]);
 
 				sig = SVF.ar(
@@ -343,6 +353,8 @@ Engine_Ack : CroneEngine {
 					filterEnvAttack: channelSpecs[\filterEnvAttack],
 					filterEnvRelease: channelSpecs[\filterEnvRelease],
 					filterEnvMod: channelSpecs[\filterEnvMod],
+					sampleRate: channelSpecs[\sampleRate],
+					bitDepth: channelSpecs[\bitDepth],
 					dist: channelSpecs[\dist],
 					delaySend: channelSpecs[\delaySend],
 					reverbSend: channelSpecs[\reverbSend]
@@ -415,6 +427,8 @@ Engine_Ack : CroneEngine {
 				filterEnvAttack,
 				filterEnvRelease,
 				filterEnvMod,
+				sampleRate,
+				bitDepth,
 				dist,
 				delaySend,
 				reverbSend,
@@ -488,6 +502,8 @@ Engine_Ack : CroneEngine {
 		this.addCommand(\filterEnvAttack, "if") { |msg| this.cmdFilterEnvAttack(msg[1], msg[2]) };
 		this.addCommand(\filterEnvRelease, "if") { |msg| this.cmdFilterEnvRelease(msg[1], msg[2]) };
 		this.addCommand(\filterEnvMod, "if") { |msg| this.cmdFilterEnvMod(msg[1], msg[2]) };
+		this.addCommand(\sampleRate, "if"){ |msg| this.cmdSampleRate(msg[1], msg[2]) };
+		this.addCommand(\bitDepth, "if"){ |msg| this.cmdBitDepth(msg[1], msg[2]) };
 		this.addCommand(\dist, "if") { |msg| this.cmdDist(msg[1], msg[2]) };
 		this.addCommand(\delaySend, "if") { |msg| this.cmdDelaySend(msg[1], msg[2]) };
 		this.addCommand(\reverbSend, "if") { |msg| this.cmdReverbSend(msg[1], msg[2]) };
@@ -686,6 +702,14 @@ Engine_Ack : CroneEngine {
 		channelControlBusses[channelnum][\filterEnvMod].set(channelSpecs[\filterEnvMod].constrain(f));
 	}
 
+	cmdSampleRate { |channelnum, f|
+		channelControlBusses[channelnum][\sampleRate].set(channelSpecs[\sampleRate].constrain(f));
+	}
+	
+	cmdBitDepth { |channelnum, f|
+		channelControlBusses[channelnum][\bitDepth].set(channelSpecs[\bitDepth].constrain(f));
+	}
+	
 	cmdDist { |channelnum, f|
 		channelControlBusses[channelnum][\dist].set(channelSpecs[\dist].constrain(f));
 	}
