@@ -27,6 +27,9 @@ specs.filter_cutoff.default = 20000
 
 specs.filter_res = ControlSpec.UNIPOLAR
 specs.filter_env_mod = ControlSpec.BIPOLAR
+
+specs.sample_rate = ControlSpec.new(0, 44100.0, "lin", 0, 44100.0)
+specs.bit_depth = ControlSpec.new(0, 31, "lin", 0, 31)
 specs.dist = ControlSpec.UNIPOLAR
 
 specs.delay_time = ControlSpec.new(0.0001, 5, 'exp', 0, 0.1, 'secs')
@@ -131,6 +134,16 @@ function Ack.add_filter_env_mod_param(channel)
   params:set_action(channel.."_filter_env_mod", function(value) engine.filterEnvMod(channel-1, value) end)
 end
 
+function Ack.add_sample_rate_param(channel)
+  params:add_control(channel.."_sample_rate", channel..": sample rate", specs.sample_rate, Formatters.default)
+  params:set_action(channel.."_sample_rate", function(value) engine.sampleRate(channel-1, value) end)
+end
+
+function Ack.add_bit_depth_param(channel)
+  params:add_control(channel.."_bit_depth", channel..": bit depth", specs.bit_depth, Formatters.default)
+  params:set_action(channel.."_bit_depth", function(value) engine.bitDepth(channel-1, value) end)
+end
+
 function Ack.add_dist_param(channel)
   params:add_control(channel.."_dist", channel..": dist", specs.dist, Formatters.unipolar_as_percentage)
   params:set_action(channel.."_dist", function(value) engine.dist(channel-1, value) end)
@@ -174,6 +187,8 @@ function Ack.add_channel_params(channel)
   Ack.add_filter_env_atk_param(channel)
   Ack.add_filter_env_rel_param(channel)
   Ack.add_filter_env_mod_param(channel)
+  Ack.add_sample_rate_param(channel)
+  Ack.add_bit_depth_param(channel)
   Ack.add_dist_param(channel)
   Ack.add_mutegroup_param(channel)
   Ack.add_delay_send_param(channel)
