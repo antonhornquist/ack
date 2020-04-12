@@ -29,7 +29,7 @@ specs.filter_res = ControlSpec.UNIPOLAR
 specs.filter_env_mod = ControlSpec.BIPOLAR
 
 specs.sample_rate = ControlSpec.new(0, 44100.0, "lin", 0, 44100.0)
-specs.bit_depth = ControlSpec.new(0, 31, "lin", 0, 31)
+specs.bit_depth = ControlSpec.new(0, 32, "lin", 0, 32)
 specs.dist = ControlSpec.UNIPOLAR
 
 specs.delay_time = ControlSpec.new(0.0001, 5, 'exp', 0, 0.1, 'secs')

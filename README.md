@@ -46,7 +46,7 @@ First argument is always channel.
 - `filterEnvRelease if` - filter AR envelope release time.
 - `filterEnvMod if` - filter AR envelope cutoff modulation -1...1.
 - `sampleRate if` - sample rate 0-44100.0
-- `bitDepth if` - sample bit depth 0-31.0
+- `bitDepth if` - sample bit depth 0-32.0
 - `dist if` - distorsion amount 0...1.
 - `includeInMuteGroup ii` - 0 or 1. 1 means channel will be muted if other channel in mute group is played.
 - `delaySend if` - delay send expressed in dB.
@@ -116,7 +116,7 @@ Settings per channel:
 - `filter env rel` - 0-3000 ms
 - `filter env mod` - bipolar -100..100%
 - `sample rate` - 0-44100.0
-- `bit depth` - 0-31.0
+- `bit depth` - 0-32.0
 - `dist` - unipolar 0..100%
 - `in mutegroup` - mutegroup enable / disable
 - `delay send` - expressed in dB

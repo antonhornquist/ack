@@ -61,7 +61,7 @@ Engine_Ack : CroneEngine {
 		channelSpecs[\filterPeakLevel] = ControlSpec(0, 1, step: 1, default: 0);
 		channelSpecs[\filterEnvMod] = \bipolar.asSpec;
 		channelSpecs[\sampleRate] = ControlSpec(0, 44100.0, default: 44100.0);
-		channelSpecs[\bitDepth] = ControlSpec(0, 31, default: 31);
+		channelSpecs[\bitDepth] = ControlSpec(0, 32, default: 32);
 		channelSpecs[\dist] = \unipolar.asSpec;
 		// TODO slewSpec = ControlSpec(0, 5, default: 0);
 
