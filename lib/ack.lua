@@ -5,14 +5,13 @@ local Ack = {}
 local specs = {}
 
 specs.send = ControlSpec.DB:copy()
-specs.send.default = -60
+specs.send.default = -math.huge
 
 specs.sample_start = ControlSpec.UNIPOLAR
 specs.sample_end = ControlSpec.new(0, 1, 'lin', 0, 1, '')
 specs.loop_point = ControlSpec.UNIPOLAR
 
 specs.speed = ControlSpec.new(0.05, 5, 'lin', 0, 1, '')
--- specs.slew = ControlSpec.new(0, 5, 'lin', 0, 0, '') -- TODO: slews
 
 specs.volume = ControlSpec.DB:copy()
 specs.volume.default = -10
@@ -193,21 +192,6 @@ function Ack.add_channel_params(channel)
   Ack.add_mutegroup_param(channel)
   Ack.add_delay_send_param(channel)
   Ack.add_reverb_send_param(channel)
-
-  -- TODO: refactor each param into a separate function
-  --[[
-  TODO: slews
-  params:add_control(channel..": speed slew", slew_spec, Formatters.default)
-  params:set_action(channel..": speed slew", function(value) engine.speedSlew(channel-1, value) end)
-  params:add_control(channel..": vol slew", slew_spec, Formatters.default)
-  params:set_action(channel..": vol slew", function(value) engine.volumeSlew(channel-1, value) end)
-  params:add_control(channel..": pan slew", slew_spec, Formatters.default)
-  params:set_action(channel..": pan slew", function(value) engine.panSlew(channel-1, value) end)
-  params:add_control(channel..": filter cutoff slew", slew_spec, Formatters.default)
-  params:set_action(channel..": filter cutoff slew", function(value) engine.filterCutoffSlew(channel-1, value) end)
-  params:add_control(channel..": filter res slew", slew_spec, Formatters.default)
-  params:set_action(channel..": filter res slew", function(value) engine.filterResSlew(channel-1, value) end)
-  ]]
 end
 
 function Ack.add_effects_params()
