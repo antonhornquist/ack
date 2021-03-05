@@ -1,4 +1,5 @@
 (
+// TODO: remove single character variables
 var include_relative = { |relative_path|
 	var path = (PathName(thisProcess.nowExecutingPath).pathOnly +/+ relative_path).standardizePath;
 	if (File.exists(path)) {
@@ -30,8 +31,8 @@ start_script.value {
 	var ui_grid_width = ui[\grid_width];
 
 	var num_patterns = 99;
-	var max_grid_width = 16;
-	var height = 8; // TODO: should be called num_tracks
+	var steps_per_pattern = 16;
+	var num_tracks = 8;
 
 	var pattern_file = "step.data";
 
@@ -43,8 +44,8 @@ start_script.value {
 	var swing_amount_spec = ControlSpec.new(0, 100, 'lin', 0.1, 0, "%");
 
 	var playing = false;
-	var queued_playpos;
-	var playpos = -1;
+	var queued_playpos; // TODO: should be 1..steps_per_pattern, not 0 based
+	var playpos = -1; // TODO: should be 1..steps_per_pattern, not 0 based
 	var sequencer_metro;
 
 	var ppqn = 24;
@@ -52,7 +53,7 @@ start_script.value {
 	var odd_ppqn;
 	var even_ppqn;
 
-	var trigs = Array.fill(num_patterns*max_grid_width*height);
+	var trigs = Array.fill(num_patterns*steps_per_pattern*num_tracks);
 
 	var hi_level = 15;
 	var lo_level = 4;
@@ -73,33 +74,37 @@ start_script.value {
 	var key3_y = key2_y;
 
 	var focus;
+	var mode = 'params'; // 'pattern', 'params'
 	var key1_held = false;
 	var key2_held = false;
 	var key3_held = false;
+
+	var params_ui_cursor_step = 20;
+	var params_ui_cursor = 1 * params_ui_cursor_step;
 
 	var cutting_is_enabled = {
 		~params.get_("last_row_cuts") == 2
 	};
 
-	var set_trig = { |patternno, x, y, value|
-		var index = get_trigs_index.value(patternno, x, y);
+	var set_trig = { |patternno, stepnum, tracknum, value|
+		var index = get_trigs_index.value(patternno, stepnum, tracknum);
 		trigs[index] = value;
 	};
 
-	var trig_is_set = { |patternno, x, y|
-		var index = get_trigs_index.value(patternno, x, y);
+	var trig_is_set = { |patternno, stepnum, tracknum|
+		var index = get_trigs_index.value(patternno, stepnum, tracknum);
 		trigs[index]
 	};
 
-	var get_trigs_index = { |patternno, x, y|
-		((patternno-1)*max_grid_width*height) + ((y-1)*max_grid_width) + (x-1)
+	var get_trigs_index = { |patternno, stepnum, tracknum|
+		((patternno-1)*steps_per_pattern*num_tracks) + ((tracknum-1)*steps_per_pattern) + (stepnum-1)
 	};
 
 	var init_trigs = {
 		(1..num_patterns).do { |patternno|
-			(1..max_grid_width).do { |x|
-				(1..height).do { |y|
-					set_trig.value(patternno, x, y, false);
+			(1..steps_per_pattern).do { |stepnum|
+				(1..num_tracks).do { |tracknum|
+					set_trig.value(patternno, stepnum, tracknum, false);
 				}
 			}
 		}
@@ -124,41 +129,42 @@ start_script.value {
 	};
 
 	var save_patterns = {
-/*
-		// TODO local fd=io.open(norns.state.data .. PATTERN_FILE,"w+")
-		// TODO io.output(fd)
-		(1..num_patterns).do { |patternno|
-			(1..height).do { |y|
-				(1..max_grid_width).do { |x|
-					var int;
-					if (trig_is_set.value(patternno, x, y)) {
-						int = 1
-					} {
-						int = 0
+		var filename = ~norns.state.data ++ pattern_file;
+		File.use(filename.standardizePath, "w+") { |file|
+			(1..num_patterns).do { |patternno|
+				(1..num_tracks).do { |tracknum|
+					(1..steps_per_pattern).do { |stepnum|
+						var int;
+						if (trig_is_set.value(patternno, stepnum, tracknum)) {
+							int = 1
+						} {
+							int = 0
+						};
+						file.write(int.asString ++ "\n");
 					};
-					// TODO io.write(int .. "\n")
 				};
 			};
 		};
-		// TODO io.close(fd)
-*/
 	};
 
 	var load_patterns = {
-/*
-		// TODO local fd=io.open(norns.state.data .. PATTERN_FILE,"r")
-		if (fd.notNil) {
-			io.input(fd);
-			(1..num_patterns).do { |patternno|
-				(1..height).do { |y|
-					(1..max_grid_width).do { |x|
-						// TODO set_trig.value(patternno, x, y, tonumber(io.read()) == 1)
-					}
-				}   
+		var filename = ~norns.state.data ++ pattern_file;
+		if (File.exists(filename.standardizePath)) {
+			File.use(filename.standardizePath, "r") { |file|
+				(1..num_patterns).do { |patternno|
+					(1..num_tracks).do { |tracknum|
+						(1..steps_per_pattern).do { |stepnum|
+							var line = file.getLine();
+							if (line.notNil) {
+								set_trig.value(patternno, stepnum, tracknum, line.stripWhiteSpace == "1");
+							} {
+								Error("file % has invalid pattern file format".format(filename)).throw;
+							};
+						};
+					};
+				};
 			};
-			io.close(fd);
 		};
-*/
 	};  
 
 	var tick = {
@@ -167,7 +173,7 @@ start_script.value {
 		};
 
 		if ((ticks_to_next.isNil) or: (ticks_to_next == 0)) {
-			var ts = Array.fill(height);
+			var ts = Array.fill(num_tracks);
 			var previous_playpos = playpos;
 			if (queued_playpos.notNil) {
 				playpos = queued_playpos;
@@ -175,11 +181,11 @@ start_script.value {
 			} {
 				playpos = (playpos + 1) mod: get_pattern_length.value();
 			};
-			(1..height).do { |y| // TODO: height
-				if (trig_is_set.value(~params.get_("pattern"), playpos+1, y) and: (cutting_is_enabled.value() and: (y == (height))).not) { // TODO: height
-					ts[y-1] = 1;
+			(1..num_tracks).do { |tracknum|
+				if (trig_is_set.value(~params.get_("pattern"), playpos+1, tracknum) and: (cutting_is_enabled.value() and: (tracknum == (num_tracks))).not) {
+					ts[tracknum-1] = 1;
 				} {
-					ts[y-1] = 0;
+					ts[tracknum-1] = 0;
 				}
 			};
 			~engine.multiTrig_(ts[0], ts[1], ts[2], ts[3], ts[4], ts[5], ts[6], ts[7]);
@@ -304,7 +310,7 @@ start_script.value {
 			)
 		);
 
-		// TODO params.add_separator_();
+		~params.add_separator_();
 
 		ack_add_params.value();
 	};
@@ -322,14 +328,30 @@ start_script.value {
 				device: ~arc.connect_(),
    				on_delta: { |n, delta|
 					case
-					{n == 1} {
-						var val = ~params.get_raw_("tempo");
-   						~params.set_raw_("tempo", val+(delta/500));
+					{ mode == 'main' } {
+						case
+						{n == 1} {
+							var val = ~params.get_raw_("tempo");
+							~params.set_raw_("tempo", val+(delta/500));
+						}
+						{n == 2} {
+							var val = ~params.get_raw_("swing_amount");
+							~params.set_raw_("swing_amount", val+(delta/500));
+						}
 					}
-					{ n == 2 } {
-   						var val = ~params.get_raw_("swing_amount");
-						~params.set_raw_("swing_amount", val+(delta/500));
-   					}
+					{ mode == 'params' } {
+						case
+						{n == 1} {
+							params_ui_cursor = ((params_ui_cursor + delta) max: params_ui_cursor_step) min: (~params[\params].size*params_ui_cursor_step);
+						}
+						{n == 2} {
+							var earams_ui_cursor_unstepped = (params_ui_cursor/params_ui_cursor_step).round;
+							var param = ~params[\params][earams_ui_cursor_unstepped-1];
+							var val = param.get_raw_();
+							param.set_raw_(val+(delta/500));
+						};
+						ui_set_dirty.value();
+					}
 				},
    				on_refresh: { |my_arc|
 					my_arc.all_(1, 0);
@@ -343,7 +365,7 @@ start_script.value {
 		ui_init_grid.value(
 			(
 				device: ~grid.connect_(),
-   				on_key: { |x, y, state|
+   				on_key: { |x, y, state| // TODO: single character
 					if (state == 1) {
 		   				if (cutting_is_enabled.value() and: (y == 8)) { // TODO: y == 8 should be y == 7 everywhere
 							queued_playpos = x-1;
@@ -383,14 +405,14 @@ start_script.value {
 					};
 
 					var refresh_grid_column = { |x|
-						(1..height).do { |y|
+						(1..num_tracks).do { |y|
 							refresh_grid_button.value(x, y)
 						}
 					};
 
 					var refresh_grid = {
-						(1..max_grid_width).do { |x|
-							refresh_grid_column.value(x)
+						(1..steps_per_pattern).do { |stepnum|
+							refresh_grid_column.value(stepnum)
 						}
 					};
 
@@ -440,12 +462,12 @@ start_script.value {
 		};
 	};
 
-	var mouse_down_steps_ui_action = { |x, y, buttonnum|
+	var mouse_down_pattern_ui_action = { |x, y, buttonnum|
 		case
 		{ focus.notNil } {
 			var patternno = ~params.get_("pattern");
 			var trig_in_focus = focus[\pos];
-			if (cutting_is_enabled.value() and: (trig_in_focus.y == height)) {
+			if (cutting_is_enabled.value() and: (trig_in_focus.y == num_tracks)) {
 				queued_playpos = trig_in_focus.x-1; // TODO: playpos - 1 , queued_playpos
 				ui_set_dirty.value(); // TODO: not correct
 			} {
@@ -456,7 +478,7 @@ start_script.value {
 		}
 	};
 
-	var mouse_down_param_ui_action = { |x, y, buttonnum|
+	var mouse_down_main_ui_action = { |x, y, buttonnum|
 		case
 		{ focus == 'key2' } {
 			~key.value(2, 1); // TODO: better handled not using key?
@@ -470,10 +492,15 @@ start_script.value {
 		var prev_active = active;
 		mouse_down_pos = x@y;
 	
-		if (key1_held) {
-			mouse_down_steps_ui_action.value(x, y, buttonnum);
-		} {
-			mouse_down_param_ui_action.value(x, y, buttonnum);
+		case
+		{ mode == 'main' } {
+			mouse_down_main_ui_action.value(x, y, buttonnum);
+		}
+		{ mode == 'pattern' } {
+			mouse_down_pattern_ui_action.value(x, y, buttonnum);
+		}
+		{ mode == 'params' } {
+			// TODO mouse_down_params_ui_action.value(x, y, buttonnum);
 		};
 	
 		active = focus;
@@ -484,7 +511,7 @@ start_script.value {
 	};
 
 	var mouse_drag = { |x, y, drag|
-		if (key1_held) {
+		if (mode == 'pattern') {
 			var trig;
 			trig = get_trig_mouse_hovers_over.value(x@y);
 			case
@@ -557,8 +584,8 @@ start_script.value {
 	
 	var get_trig_mouse_hovers_over = { |mouse_pos|
 		var trig;
-		(1..max_grid_width).do { |stepnum|
-			(1..height).do { |tracknum|
+		(1..steps_per_pattern).do { |stepnum|
+			(1..num_tracks).do { |tracknum|
 				var trig_pos = calculate_trig_position.value(tracknum, stepnum);
 				var left = trig_pos.x - additional_extent_x;
 				var right = trig_pos.x + trig_width + additional_extent_x;
@@ -578,11 +605,10 @@ start_script.value {
 	};
 
 	var construct_trig_symbol = { |tracknum, stepnum|
-		// TODO ("trig_track_"++tracknum++"_step_"++stepnum).asSymbol
 		(type: \trig, pos: stepnum@tracknum)
 	};
 
-	var update_steps_ui_focus = { |pos|
+	var update_pattern_ui_focus = { |pos|
 		var trig;
 		trig = get_trig_mouse_hovers_over.value(pos);
 		case
@@ -594,7 +620,7 @@ start_script.value {
 		};
 	};
 
-	var update_param_ui_focus = { |pos|
+	var update_main_ui_focus = { |pos|
 		case
 		{ over_enc1_value.value(pos) } { // TODO: refactor out over_enc1_value
 			focus = 'enc1';
@@ -617,16 +643,18 @@ start_script.value {
 	};
 
 	var update_focus = { |pos|
-		if (key1_held) {
-			update_steps_ui_focus.value(pos);
-		} {
-			update_param_ui_focus.value(pos);
+		case
+		{ mode == 'main' } {
+			update_main_ui_focus.value(pos);
+		}
+		{ mode == 'pattern' } {
+			update_pattern_ui_focus.value(pos);
 		};
 	};
 	
 	var over_enc1_value = { |pos|
 		var bounds = get_enc1_value_bounds.value();
-// TODO [bounds, pos].debug('contains');
+[bounds, pos].debug('contains');
 		bounds.contains(pos);
 	};
 	
@@ -659,7 +687,7 @@ start_script.value {
 	var get_enc1_value_bounds = {
 		var enc1_x = 1;
 		var enc1_y = 12;
-		var the_value = round(/* TODO ~params.get_raw_("output_level") */ 0.5 *100).asString;
+		var the_value = round(/* TODO ~params.get_raw_("output_level") */ 0.5 *100).asString; // TODO: introduce engine specific output level
 		var value_x = enc1_x + ~screen.text_extents_("LEVEL") + 3;
 		var value_y = enc1_y;
 		var value_width = ~screen.text_extents_(the_value);
@@ -703,7 +731,7 @@ start_script.value {
 		~screen.fill_();
 	};
 
-	var redraw_param_ui = {
+	var redraw_main_ui = {
 		var redraw_enc1_widget = {
 			~screen.move_(enc1_x, enc1_y);
 			~screen.level_(lo_level);
@@ -714,7 +742,7 @@ start_script.value {
 			} {
 				~screen.level_(hi_level);
 			};
-   			~screen.text_(round(/* TODO ~params.get_raw_("output_level") */ 0.5*100, 1));
+   			~screen.text_(round(/* TODO ~params.get_raw_("output_level") */ 0.5*100, 1)); // TODO: introduce engine specific output level
 		};
 
 		var redraw_enc2_widget = {
@@ -803,7 +831,7 @@ start_script.value {
 		pos_x@pos_y;
 	};
 
-	var redraw_steps_ui = {
+	var redraw_pattern_ui = {
 		var patternno = ~params.get_("pattern");
 		var redraw_trig = { |stepnum, tracknum|
 			var trig_pos = calculate_trig_position.value(tracknum, stepnum);
@@ -822,11 +850,6 @@ start_script.value {
 			case
 			{ active == construct_trig_symbol.value(tracknum, stepnum) } {
 				~screen.level_(hi_level);
-/*
-	TODO
-			} { focus == construct_trig_symbol.value(tracknum, stepnum) } {
-				~screen.level_((hi_level+lo_level)/2);
-*/
 			} { true } {
 				if (is_set) {
 					~screen.level_(hi_level);
@@ -840,15 +863,15 @@ start_script.value {
 
 		var redraw_playpos = {
 			var top_trig_pos = calculate_trig_position.value(1, playpos+1);
-			var bottom_trig_pos = calculate_trig_position.value(height, playpos+1);
-			~screen.rect_(top_trig_pos.x, top_trig_pos.y, trig_width, (trig_height*height) + (trig_margin_y*(height-1))); // TODO: playpos-1
+			var bottom_trig_pos = calculate_trig_position.value(num_tracks, playpos+1);
+			~screen.rect_(top_trig_pos.x, top_trig_pos.y, trig_width, (trig_height*num_tracks) + (trig_margin_y*(num_tracks-1))); // TODO: playpos-1
 			~screen.level_(lo_level-2);
 			~screen.fill_();
 		};
 
 		var redraw_samplename = { |tracknum|
 			var path = ~params.get_(tracknum.asString ++ "_sample");
-			var rightmost_trig_pos = calculate_trig_position.value(tracknum, max_grid_width);
+			var rightmost_trig_pos = calculate_trig_position.value(tracknum, steps_per_pattern);
 
 			~screen.move_(rightmost_trig_pos.x + trig_width + (trig_margin_x * 2), rightmost_trig_pos.y + (trig_height * 1.25));
 			~screen.font_size_(8);
@@ -858,12 +881,12 @@ start_script.value {
 
 		~screen.clear_();
 
-		redraw_playpos.value;
+		redraw_playpos.value; // TODO: align with grid
 	
-		(1..height).do { |tracknum|
+		(1..num_tracks).do { |tracknum|
 			redraw_samplename.value(tracknum);
 
-			(1..max_grid_width).do { |stepnum|
+			(1..steps_per_pattern).do { |stepnum|
 				redraw_trig.value(stepnum, tracknum);
 			};
 		};
@@ -873,6 +896,70 @@ start_script.value {
 		};
 
 		~screen.update_();
+	};
+
+	var redraw_params_ui = {
+		var redraw_row_label = { |label, y_pos, level|
+			~screen.level_(level);
+			~screen.move_(1, y_pos);
+			~screen.text_(label.asString);
+		};
+
+		var redraw_row_value = { |value, y_pos, level|
+			~screen.level_(level);
+			~screen.move_(128, y_pos);
+			~screen.text_right_(value.asString);
+		};
+
+		var redraw_param = { |param, y_pos, level|
+			case
+			{ param[\type] == 'separator' } {
+				redraw_row_label.value(Array.fill(35) { "_" }.join, y_pos, level);
+			}
+			{ ['file', 'control', 'option', 'number'].includes(param[\type]) } {
+				redraw_row_label.value(param[\name], y_pos, level);
+				redraw_row_value.value(param.get_(), y_pos, level);
+			};
+		};
+
+		var params_ui_cursor_unstepped = (params_ui_cursor/params_ui_cursor_step).round;
+
+		~screen.clear_();
+
+		((params_ui_cursor_unstepped-2)..(params_ui_cursor_unstepped+3)).do { |index, count|
+			case
+			{index == -1} {
+				redraw_row_label.value("PARAMETERS", 1 + 10, lo_level);
+			}
+			{index == 0} {
+			}
+			{true} {
+				var param = ~params[\params][index-1];
+				var level;
+				if (index == params_ui_cursor_unstepped) {
+					level = hi_level;
+				} {
+					level = lo_level;
+				};
+				redraw_param.value(param, 1 + ((count+1) * 10), level);
+			}
+		};
+
+		~screen.update_();
+	};
+
+	var cycle_mode = {
+		case
+		{ mode == 'main' } {
+			mode = 'pattern';
+		}
+		{ mode == 'pattern' } {
+			mode = 'params';
+		}
+		{ mode == 'params' } {
+			mode = 'main';
+		};
+		focus = nil;
 	};
 
 	~engine.name = 'Ack';
@@ -886,38 +973,41 @@ start_script.value {
 		playing = true;
 		sequencer_metro.start_();
 
-		~params.set__("last_row_cuts", 2); // TODO
+		~params.set__("last_row_cuts", 2); // TODO: this is the default in sc, not in lua
 
-		// TODO ~params.read_();
+		~params.read_();
 		~params.bang_();
 	};
 
 	~cleanup = {
+		~params.write_();
+		save_patterns.value();
 /*
 	TODO
-		~params.write_();
-
-		save_patterns.value();
-
-		if (my_grid.device.notNil) { // TODO device_ ?
+		if (my_grid.device_.notNil) {
 			my_grid.all_(0);
 			my_grid.refresh_();
-		}
+		};
 */
 	};
 
 	~redraw = {
-		if (key1_held) {
-			redraw_steps_ui.value;
-		} {
-			redraw_param_ui.value;
+		case
+		{ mode == 'main' } {
+			redraw_main_ui.value();
+		}
+		{ mode == 'pattern' } {
+			redraw_pattern_ui.value();
+		}
+		{ mode == 'params' } {
+			redraw_params_ui.value();
 		};
 	};
 
 	~enc = { |n, delta|
 		case
 		{n == 1} {
-			// TODO ~params.delta_("output_level", delta);
+			// TODO ~params.delta_("output_level", delta); // TODO: introduce engine specific output level
 			ui_set_dirty.value();
 		}
 		{n == 2} {
@@ -930,32 +1020,58 @@ start_script.value {
 
 	~key = { |n, s|
 		case
-		{n == 1} {
-			// TODO key1_held = s == 1;
-			if (s == 1) {
-				key1_held = key1_held.not;
+		{ mode == 'main' } {
+			case
+			{n == 1} {
+				key1_held = (s == 1);
+
+				if (s == 1) {
+					cycle_mode.value();
+				};
+			}
+			{(n == 2) and: (s == 1)} {
+				key2_held = true;
+				if (playing == false) {
+					playpos = -1;
+					queued_playpos = 0;
+				} {
+					playing = false;
+					sequencer_metro.stop_();
+				}
+			}
+			{(n == 2) and: (s == 0)} {
+				key2_held = false;
+			}
+			{(n == 3) and: (s == 1)} {
+				key3_held = true;
+				playing = true;
+				sequencer_metro.start_();
+			}
+			{(n == 3) and: (s == 0)} {
+				key3_held = false;
+			};
+		}
+		{ mode == 'pattern' } {
+			case
+			{n == 1} {
+				key1_held = (s == 1);
+
+				if (s == 1) {
+					cycle_mode.value();
+				};
 			}
 		}
-		{(n == 2) and: (s == 1)} {
-			key2_held = true;
-			if (playing == false) {
-				playpos = -1;
-				queued_playpos = 0;
-			} {
-				playing = false;
-				sequencer_metro.stop_();
+		{ mode == 'params' } {
+			case
+			{(n == 1) and: (s == 1)} {
+				cycle_mode.value();
 			}
-		}
-		{(n == 2) and: (s == 0)} {
-			key2_held = false;
-		}
-		{(n == 3) and: (s == 1)} {
-			key3_held = true;
-			playing = true;
-			sequencer_metro.start_();
-		}
-		{(n == 3) and: (s == 0)} {
-			key3_held = false;
+			{(n == 2) and: (s == 1)} {
+				params_ui_cursor = (params_ui_cursor - params_ui_cursor_step) max: 1;
+			}
+			{(n == 3) and: (s == 1)} {
+				params_ui_cursor = (params_ui_cursor + params_ui_cursor_step) min: (~params[\params].size + params_ui_cursor_step);
+			};
 		};
 		ui_set_dirty.value();
 	};
