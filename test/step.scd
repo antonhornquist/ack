@@ -1067,10 +1067,10 @@ start_script.value {
 				cycle_mode.value();
 			}
 			{(n == 2) and: (s == 1)} {
-				params_ui_cursor = (params_ui_cursor - params_ui_cursor_step) max: 1;
+				params_ui_cursor = (params_ui_cursor - params_ui_cursor_step) max: params_ui_cursor_step;
 			}
 			{(n == 3) and: (s == 1)} {
-				params_ui_cursor = (params_ui_cursor + params_ui_cursor_step) min: (~params[\params].size + params_ui_cursor_step);
+				params_ui_cursor = (params_ui_cursor + params_ui_cursor_step) min: (~params[\params].size * params_ui_cursor_step);
 			};
 		};
 		ui_set_dirty.value();
