@@ -44,8 +44,8 @@ start_script.value {
 	var swing_amount_spec = ControlSpec.new(0, 100, 'lin', 0.1, 0, "%");
 
 	var playing = false;
-	var queued_playpos; // TODO: should be 1..steps_per_pattern, not 0 based
-	var playpos = -1; // TODO: should be 1..steps_per_pattern, not 0 based
+	var queued_playpos;
+	var playpos = 0;
 	var sequencer_metro;
 
 	var ppqn = 24;
@@ -179,10 +179,13 @@ start_script.value {
 				playpos = queued_playpos;
 				queued_playpos = nil;
 			} {
-				playpos = (playpos + 1) mod: get_pattern_length.value();
+				playpos = playpos + 1;
+				if (playpos > get_pattern_length.value()) {
+					playpos = 1;
+				};
 			};
 			(1..num_tracks).do { |tracknum|
-				if (trig_is_set.value(~params.get_("pattern"), playpos+1, tracknum) and: (cutting_is_enabled.value() and: (tracknum == (num_tracks))).not) {
+				if (trig_is_set.value(~params.get_("pattern"), playpos, tracknum) and: (cutting_is_enabled.value() and: (tracknum == (num_tracks))).not) {
 					ts[tracknum-1] = 1;
 				} {
 					ts[tracknum-1] = 0;
@@ -215,8 +218,8 @@ start_script.value {
 
 	var update_even_odd_ppqn = { |swing_amount|
 		var swing_ppqn = ppqn*swing_amount/100*0.75;
-		even_ppqn = round(ppqn+swing_ppqn);
-		odd_ppqn = round(ppqn-swing_ppqn);
+		even_ppqn = round(ppqn-swing_ppqn);
+		odd_ppqn = round(ppqn+swing_ppqn);
 	};
 
 	var init_sequencer_metro = {
@@ -232,7 +235,7 @@ start_script.value {
 				id: "pattern_length",
 				name: "Pattern Length",
 				options: [8, 16],
-				default: 16
+				default: 2
 			)
 		);
 
@@ -345,10 +348,14 @@ start_script.value {
 							params_ui_cursor = ((params_ui_cursor + delta) max: params_ui_cursor_step) min: (~params[\params].size*params_ui_cursor_step);
 						}
 						{n == 2} {
-							var earams_ui_cursor_unstepped = (params_ui_cursor/params_ui_cursor_step).round;
-							var param = ~params[\params][earams_ui_cursor_unstepped-1];
+							var params_ui_cursor_unstepped = (params_ui_cursor/params_ui_cursor_step).round;
+							var param = ~params[\params][params_ui_cursor_unstepped-1];
+/*
+	TODO
 							var val = param.get_raw_();
 							param.set_raw_(val+(delta/500));
+*/
+							param.delta_(delta);
 						};
 						ui_set_dirty.value();
 					}
@@ -368,7 +375,7 @@ start_script.value {
    				on_key: { |x, y, state| // TODO: single character
 					if (state == 1) {
 		   				if (cutting_is_enabled.value() and: (y == 8)) { // TODO: y == 8 should be y == 7 everywhere
-							queued_playpos = x-1;
+							queued_playpos = x;
 							ui_set_dirty.value(); // TODO: not correct
 						} {
 		   					set_trig.value(
@@ -385,7 +392,7 @@ start_script.value {
 				on_refresh: { |my_grid|
 					var refresh_grid_button = { |x, y|
 						if (cutting_is_enabled.value() and: (y == 8)) {
-							if ((x-1) == playpos) {
+							if (x == playpos) {
 								my_grid.led_(x, y, playpos_level);
 							} {
 								my_grid.led_(x, y, clear_level);
@@ -395,7 +402,7 @@ start_script.value {
 							{trig_is_set.value(~params.get_("pattern"), x, y)} {
    								my_grid.led_(x, y, trig_level)
 							}
-							{ x-1 == playpos } {
+							{ x == playpos } {
 								my_grid.led_(x, y, playpos_level)
 							}
 							{ true } {
@@ -434,7 +441,7 @@ start_script.value {
 
 	var get_play_label = {
 		if (playing) {
-			"PLAY" + (playpos+1);
+			"PLAY " ++ playpos; // TODO: sometimes prints 0!?
 		} {
 			"PLAY";
 		};
@@ -468,7 +475,7 @@ start_script.value {
 			var patternno = ~params.get_("pattern");
 			var trig_in_focus = focus[\pos];
 			if (cutting_is_enabled.value() and: (trig_in_focus.y == num_tracks)) {
-				queued_playpos = trig_in_focus.x-1; // TODO: playpos - 1 , queued_playpos
+				queued_playpos = trig_in_focus.x;
 				ui_set_dirty.value(); // TODO: not correct
 			} {
 				set_trig.value(patternno, trig_in_focus.x, trig_in_focus.y, trig_is_set.value(patternno, trig_in_focus.x, trig_in_focus.y).not);
@@ -654,7 +661,7 @@ start_script.value {
 	
 	var over_enc1_value = { |pos|
 		var bounds = get_enc1_value_bounds.value();
-[bounds, pos].debug('contains');
+// TODO [bounds, pos].debug('contains');
 		bounds.contains(pos);
 	};
 	
@@ -836,11 +843,18 @@ start_script.value {
 		var redraw_trig = { |stepnum, tracknum|
 			var trig_pos = calculate_trig_position.value(tracknum, stepnum);
 			var is_set = trig_is_set.value(patternno, stepnum, tracknum);
+			var is_played = playpos == stepnum;
 			var trig_id = construct_trig_symbol.value(tracknum, stepnum);
+
 			if ( (focus == trig_id) and: (active == trig_id).not ) {
-				if (is_set) {
+				case
+				{is_set} {
 					~screen.level_(lo_level);
-				} {
+				}
+				{is_played} {
+					~screen.level_(lo_level);
+				}
+				{true} {
 					~screen.level_(hi_level);
 				};
 				~screen.rect_(trig_pos.x-additional_extent_x, trig_pos.y-additional_extent_y, trig_width+(additional_extent_x*2), trig_height+(additional_extent_y*2));
@@ -851,21 +865,18 @@ start_script.value {
 			{ active == construct_trig_symbol.value(tracknum, stepnum) } {
 				~screen.level_(hi_level);
 			} { true } {
-				if (is_set) {
+				case
+				{is_set} {
 					~screen.level_(hi_level);
-				} {
+				}
+				{is_played} {
+					~screen.level_((hi_level + lo_level)/2);
+				}
+				{true} {
 					~screen.level_(lo_level);
 				};
 			};
 			~screen.rect_(trig_pos.x, trig_pos.y, trig_width, trig_height);
-			~screen.fill_();
-		};
-
-		var redraw_playpos = {
-			var top_trig_pos = calculate_trig_position.value(1, playpos+1);
-			var bottom_trig_pos = calculate_trig_position.value(num_tracks, playpos+1);
-			~screen.rect_(top_trig_pos.x, top_trig_pos.y, trig_width, (trig_height*num_tracks) + (trig_margin_y*(num_tracks-1))); // TODO: playpos-1
-			~screen.level_(lo_level-2);
 			~screen.fill_();
 		};
 
@@ -881,7 +892,7 @@ start_script.value {
 
 		~screen.clear_();
 
-		redraw_playpos.value; // TODO: align with grid
+		// redraw_playpos.value; // TODO: align with grid
 	
 		(1..num_tracks).do { |tracknum|
 			redraw_samplename.value(tracknum);
@@ -918,7 +929,7 @@ start_script.value {
 			}
 			{ ['file', 'control', 'option', 'number'].includes(param[\type]) } {
 				redraw_row_label.value(param[\name], y_pos, level);
-				redraw_row_value.value(param.get_(), y_pos, level);
+				redraw_row_value.value(param.string_(), y_pos, level);
 			};
 		};
 
@@ -1032,8 +1043,8 @@ start_script.value {
 			{(n == 2) and: (s == 1)} {
 				key2_held = true;
 				if (playing == false) {
-					playpos = -1;
-					queued_playpos = 0;
+					playpos = 0;
+					queued_playpos = 1;
 				} {
 					playing = false;
 					sequencer_metro.stop_();
