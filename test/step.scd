@@ -20,15 +20,165 @@ start_script.value {
 	var arc_led_x_spec = specs[\arc_led_x_spec];
 	var arc_led_l_spec = specs[\arc_led_l_spec];
 
-	var ui = include_relative.value("lib/ui.scd");
-	var ui_init_arc = ui[\init_arc];
-	var ui_init_grid = ui[\init_grid];
-	var ui_init_screen = ui[\init_screen];
-	var ui_refresh = ui[\refresh];
-	var ui_set_dirty = ui[\set_dirty];
-	var ui_event_indicator_is_shown = ui[\event_indicator_is_shown];
-	var ui_flash_event = ui[\flash_event]; // TODO
-	var ui_grid_width = ui[\grid_width];
+	// arc
+
+	var arc_device;
+	// TODO var arc_delta_callback;
+	var arc_refresh_callback;
+	// TODO var arc_is_inited = false;
+
+	var arc_connected = false;
+	var arc_dirty = false;
+
+/*
+	TODO
+	var init_arc = { |config|
+		if (config.device == nil) {
+			Error("init_arc: device is mandatory").throw;
+		};
+
+		arc_device = config.device;
+
+		arc_delta_callback = config[\on_delta];
+		arc_device[\delta] = { |n, delta| // not .delta notation to suppress self argument?
+			flash_event.value();
+			arc_delta_callback.value(n, delta);
+		};
+		arc_refresh_callback = config[\on_refresh];
+		arc_is_inited = true;
+	};
+*/
+
+	var check_arc_connected = {
+		var arc_check = arc_device.device_ != nil;
+		if (arc_connected != arc_check) {
+			arc_connected = arc_check;
+			arc_dirty = true;
+		};
+	};
+
+	// grid
+
+	var grid_device;
+	// TODO var grid_key_callback;
+	var grid_refresh_callback;
+	// TODO var grid_is_inited = false;
+
+	var grid_connected = false;
+	var grid_dirty = false;
+	var grid_width = Ref.new;
+
+/*
+	TODO
+	var init_grid = { |config|
+		if (config.device == nil) {
+			Error("init_grid: device is mandatory").throw;
+		};
+
+		grid_device = config.device;
+
+		grid_key_callback = config[\on_key];
+		grid_device[\key] = { |x, y, s| // not .key notation to suppress self argument?
+			flash_event.value();
+			grid_key_callback.value(x, y, s);
+		};
+		grid_refresh_callback = config[\on_refresh];
+		grid_is_inited = true;
+	};
+*/
+
+	var update_grid_width = {
+		if (grid_device.device_.notNil) {
+			if (grid_width.dereference != grid_device.cols_) {
+				grid_width.set(grid_device.cols_);
+			};
+		};
+	};
+
+	var check_grid_connected = {
+		var grid_check = (grid_device.device != nil);
+		if (grid_connected != grid_check) {
+			grid_connected = grid_check;
+			grid_dirty = true;
+		};
+	};
+  
+	// event flash
+
+	var show_event_indicator = false;
+
+	var event_flash_frames = 5; // TODO: this ought to be initialized since it's refresh FPS rate affects time
+	var event_flash_frame_counter = nil;
+
+	var flash_event = {
+		event_flash_frame_counter = event_flash_frames;
+	};
+	  
+	var update_event_indicator = {
+		if (event_flash_frame_counter.notNil) {
+			event_flash_frame_counter = event_flash_frame_counter - 1;
+			case
+			{ event_flash_frame_counter == 0 } {
+				event_flash_frame_counter = nil;
+				show_event_indicator = false;
+				set_dirty.value();
+			}
+			{ show_event_indicator.not } {
+				show_event_indicator = true;
+				set_dirty.value();
+			};
+		};
+	};
+
+	// screen
+
+	var screen_dirty = false;
+	var screen_refresh_callback;
+
+	// refresh logic
+
+	var refresh = {
+		update_event_indicator.value();
+
+		// TODO if (arc_is_inited) {
+			check_arc_connected.value();
+
+			if (arc_dirty) {
+				if (arc_refresh_callback.notNil) {
+					arc_refresh_callback.value(arc_device);
+				};
+				arc_device.refresh_();
+				arc_dirty = false;
+			};
+		// TODO };
+
+		// TODO if (grid_is_inited) {
+			check_grid_connected.value();
+			update_grid_width.value();
+
+			if (grid_dirty) {
+				if (grid_refresh_callback.notNil) {
+					grid_refresh_callback.value(grid_device);
+				};
+				grid_device.refresh_();
+				grid_dirty = false;
+			};
+		// TODO };
+
+		if (screen_dirty) {
+			if (screen_refresh_callback.notNil) {
+				screen_refresh_callback.value();
+			};
+			~screen.update_(); // norns global
+			screen_dirty = false;
+		};
+	};
+
+	var set_dirty = {
+		arc_dirty = true;
+		grid_dirty = true;
+		screen_dirty = true;
+	};
 
 	var num_patterns = 99;
 	var steps_per_pattern = 16;
@@ -74,7 +224,7 @@ start_script.value {
 	var key3_y = key2_y;
 
 	var focus;
-	var mode = 'params'; // 'pattern', 'params'
+	var mode = 'main'; // 'main, 'pattern', 'params'
 	var key1_held = false;
 	var key2_held = false;
 	var key3_held = false;
@@ -198,11 +348,11 @@ start_script.value {
 			} {
 				ticks_to_next = odd_ppqn;
 			};
-			ui_set_dirty.value();
+			set_dirty.value();
 		};
 
 		if (~grid.device_.notNil) {
-			var current_grid_width = ui_grid_width.dereference;
+			var current_grid_width = grid_width.dereference;
 
 			if (get_pattern_length.value != current_grid_width) {
 				set_pattern_length.value(current_grid_width);
@@ -248,7 +398,7 @@ start_script.value {
 				max: num_patterns,
 				default: 1,
 				action: {
-					ui_set_dirty.value();
+					set_dirty.value();
 				}
 			)
 		);
@@ -295,7 +445,7 @@ start_script.value {
 				controlspec: tempo_spec,
 				action: {
 					update_sequencer_metro_time.value();
-					ui_set_dirty.value();
+					set_dirty.value();
 				}
 			)
 		);
@@ -308,7 +458,7 @@ start_script.value {
 				controlspec: swing_amount_spec,
 				action: { |val|
 					update_even_odd_ppqn.value(val);
-					ui_set_dirty.value();
+					set_dirty.value();
 				}
 			)
 		);
@@ -320,13 +470,14 @@ start_script.value {
 
 	var init_60_fps_ui_refresh_metro = {
 		var ui_refresh_metro = ~metro.init_();
-		ui_refresh_metro.event = ui_refresh;
+		ui_refresh_metro.event = refresh;
 		ui_refresh_metro.time = 1/60;
 		ui_refresh_metro.start_();
 	};
 
 	var init_ui = {
-		ui_init_arc.value(
+/*
+		init_arc.value(
 			(
 				device: ~arc.connect_(),
    				on_delta: { |n, delta|
@@ -357,7 +508,7 @@ start_script.value {
 */
 							param.delta_(delta);
 						};
-						ui_set_dirty.value();
+						set_dirty.value();
 					}
 				},
    				on_refresh: { |my_arc|
@@ -368,15 +519,60 @@ start_script.value {
    				}
 			)
 		);
+*/
 
-		ui_init_grid.value(
+		arc_device = ~arc.connect_();
+
+		// TODO arc_delta_callback = config[\on_delta];
+		arc_device[\delta] = { |n, delta| // not .delta notation to suppress self argument?
+			flash_event.value();
+			case
+			{ mode == 'main' } {
+				case
+				{n == 1} {
+					var val = ~params.get_raw_("tempo");
+					~params.set_raw_("tempo", val+(delta/500));
+				}
+				{n == 2} {
+					var val = ~params.get_raw_("swing_amount");
+					~params.set_raw_("swing_amount", val+(delta/500));
+				}
+			}
+			{ mode == 'params' } {
+				case
+				{n == 1} {
+					params_ui_cursor = ((params_ui_cursor + delta) max: params_ui_cursor_step) min: (~params[\params].size*params_ui_cursor_step);
+				}
+				{n == 2} {
+					var params_ui_cursor_unstepped = (params_ui_cursor/params_ui_cursor_step).round;
+					var param = ~params[\params][params_ui_cursor_unstepped-1];
+/*
+TODO
+					var val = param.get_raw_();
+					param.set_raw_(val+(delta/500));
+*/
+					param.delta_(delta);
+				};
+				set_dirty.value();
+			};
+		};
+		arc_refresh_callback = { |my_arc|
+			my_arc.all_(1, 0);
+			my_arc.all_(2, 0);
+			my_arc.led_(1, arc_led_x_spec.map(~params.get_raw_("tempo")), arc_led_l_spec.maxval);
+			my_arc.led_(2, arc_led_x_spec.map(~params.get_raw_("swing_amount")), arc_led_l_spec.maxval);
+		};
+
+/*
+	TODO
+		init_grid.value(
 			(
 				device: ~grid.connect_(),
    				on_key: { |x, y, state| // TODO: single character
 					if (state == 1) {
 		   				if (cutting_is_enabled.value() and: (y == 8)) { // TODO: y == 8 should be y == 7 everywhere
 							queued_playpos = x;
-							ui_set_dirty.value(); // TODO: not correct
+							set_dirty.value(); // TODO: not correct
 						} {
 		   					set_trig.value(
 								~params.get_("pattern"),
@@ -384,10 +580,10 @@ start_script.value {
 								y,
 			   					trig_is_set.value(~params.get_("pattern"), x, y).not
 							);
-		   					ui_set_dirty.value();
+		   					set_dirty.value();
 						}
 					};
-	   				ui_flash_event.value();
+	   				flash_event.value();
 				},
 				on_refresh: { |my_grid|
 					var refresh_grid_button = { |x, y|
@@ -427,14 +623,66 @@ start_script.value {
 				}
 			)
 		);
+*/
+		grid_device = ~grid.connect_();
 
-		ui_init_screen.value(
-			(
-				on_refresh: {
-					~redraw.value()
+		grid_device[\key] = { |x, y, state| // not .key notation to suppress self argument? // TODO: x, y are single character
+			flash_event.value();
+			if (state == 1) {
+				if (cutting_is_enabled.value() and: (y == 8)) { // TODO: y == 8 should be y == 7 everywhere
+					queued_playpos = x;
+					set_dirty.value(); // TODO: not correct
+				} {
+					set_trig.value(
+						~params.get_("pattern"),
+						x,
+						y,
+						trig_is_set.value(~params.get_("pattern"), x, y).not
+					);
+					set_dirty.value();
 				}
-			)
-		);
+			};
+		};
+		grid_refresh_callback = { |my_grid|
+			var refresh_grid_button = { |x, y|
+				if (cutting_is_enabled.value() and: (y == 8)) {
+					if (x == playpos) {
+						my_grid.led_(x, y, playpos_level);
+					} {
+						my_grid.led_(x, y, clear_level);
+					};
+				} {
+					case
+					{trig_is_set.value(~params.get_("pattern"), x, y)} {
+						my_grid.led_(x, y, trig_level)
+					}
+					{ x == playpos } {
+						my_grid.led_(x, y, playpos_level)
+					}
+					{ true } {
+						my_grid.led_(x, y, clear_level)
+					}
+				}
+			};
+
+			var refresh_grid_column = { |x|
+				(1..num_tracks).do { |y|
+					refresh_grid_button.value(x, y)
+				}
+			};
+
+			var refresh_grid = {
+				(1..steps_per_pattern).do { |stepnum|
+					refresh_grid_column.value(stepnum)
+				}
+			};
+
+			refresh_grid.value();
+		};
+
+		screen_refresh_callback = {
+			~redraw.value()
+		};
 
 		init_60_fps_ui_refresh_metro.value();
 	};
@@ -453,7 +701,7 @@ start_script.value {
 		var prev_focus = focus;
 		focus = nil;
 		if (prev_focus != focus) {
-			ui_set_dirty.value();
+			set_dirty.value();
 		};
 	};
 	
@@ -465,7 +713,7 @@ start_script.value {
 		update_focus.value(mouse_over_pos); // TODO: only if mouse is not pressed(?)
 	
 		if (prev_focus != focus) {
-			ui_set_dirty.value();
+			set_dirty.value();
 		};
 	};
 
@@ -476,7 +724,7 @@ start_script.value {
 			var trig_in_focus = focus[\pos];
 			if (cutting_is_enabled.value() and: (trig_in_focus.y == num_tracks)) {
 				queued_playpos = trig_in_focus.x;
-				ui_set_dirty.value(); // TODO: not correct
+				set_dirty.value(); // TODO: not correct
 			} {
 				set_trig.value(patternno, trig_in_focus.x, trig_in_focus.y, trig_is_set.value(patternno, trig_in_focus.x, trig_in_focus.y).not);
 			};
@@ -513,7 +761,7 @@ start_script.value {
 		active = focus;
 	
 		if (prev_active != active) {
-			ui_set_dirty.value();
+			set_dirty.value();
 		};
 	};
 
@@ -528,7 +776,7 @@ start_script.value {
 			{ true } {
 				focus = nil;
 			};
-			ui_set_dirty.value();
+			set_dirty.value();
 		};
 	};
 
@@ -570,7 +818,7 @@ start_script.value {
 		update_focus.value(x@y);
 	
 		if (prev_active != active) {
-			ui_set_dirty.value();
+			set_dirty.value();
 		};
 	};
 	
@@ -811,7 +1059,7 @@ start_script.value {
 
 		redraw_enc1_widget.value();
 
-		if (ui_event_indicator_is_shown.value()) {
+		if (show_event_indicator) {
 			redraw_event_flash_widget.value();
 		};
 
@@ -902,7 +1150,7 @@ start_script.value {
 			};
 		};
 
-		if (ui_event_indicator_is_shown.value()) {
+		if (show_event_indicator) {
 			redraw_event_flash_widget.value();
 		};
 
@@ -1019,7 +1267,7 @@ start_script.value {
 		case
 		{n == 1} {
 			// TODO ~params.delta_("output_level", delta); // TODO: introduce engine specific output level
-			ui_set_dirty.value();
+			set_dirty.value();
 		}
 		{n == 2} {
 			~params.delta_("tempo", delta);
@@ -1084,7 +1332,7 @@ start_script.value {
 				params_ui_cursor = (params_ui_cursor + params_ui_cursor_step) min: (~params[\params].size * params_ui_cursor_step);
 			};
 		};
-		ui_set_dirty.value();
+		set_dirty.value();
 	};
 
 	~mouse = { |what ... args| // TODO: get away from using varargs for ~mouse
