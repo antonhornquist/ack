@@ -20,15 +20,15 @@ start_script.value {
 	var arc_led_x_spec = specs[\arc_led_x_spec];
 	var arc_led_l_spec = specs[\arc_led_l_spec];
 
+	var ui_dirty = false;
+
 	// arc
 
 	var arc_device;
-	var arc_dirty = false;
 
 	// grid
 
 	var grid_device;
-	var grid_dirty = false;
 	var grid_width = Ref.new; // TODO: do not wrap as Ref
 
 	var update_grid_width = {
@@ -57,36 +57,23 @@ start_script.value {
 			{ event_flash_frame_counter == 0 } {
 				event_flash_frame_counter = nil;
 				show_event_indicator = false;
-				set_dirty.value();
+				ui_dirty = true;
 			}
 			{ show_event_indicator.not } {
 				show_event_indicator = true;
-				set_dirty.value();
+				ui_dirty = true;
 			};
 		};
 	};
-
-	// screen
-
-	var screen_dirty = false;
 
 	// ui refresh logic
 
 	var refresh_ui = {
 		update_event_indicator.value();
 
-		if (arc_dirty) {
-			my_arc.all_(1, 0);
-			my_arc.all_(2, 0);
-			my_arc.led_(1, arc_led_x_spec.map(~params.get_raw_("tempo")), arc_led_l_spec.maxval);
-			my_arc.led_(2, arc_led_x_spec.map(~params.get_raw_("swing_amount")), arc_led_l_spec.maxval);
-			arc_device.refresh_();
-			arc_dirty = false;
-		};
-
 		update_grid_width.value();
 
-		if (grid_dirty) {
+		if (ui_dirty) {
 			var refresh_grid_button = { |x, y|
 				if (cutting_is_enabled.value() and: (y == 8)) {
 					if (x == playpos) {
@@ -122,19 +109,17 @@ start_script.value {
 
 			refresh_grid.value(); // TODO: naming
 			grid_device.refresh_();
-			grid_dirty = false;
-		};
 
-		if (screen_dirty) {
+			arc_device.all_(1, 0);
+			arc_device.all_(2, 0);
+			arc_device.led_(1, arc_led_x_spec.map(~params.get_raw_("tempo")), arc_led_l_spec.maxval);
+			arc_device.led_(2, arc_led_x_spec.map(~params.get_raw_("swing_amount")), arc_led_l_spec.maxval);
+			arc_device.refresh_();
+
 			~redraw.value();
-			screen_dirty = false;
-		};
-	};
 
-	var set_dirty = {
-		arc_dirty = true;
-		grid_dirty = true;
-		screen_dirty = true;
+			ui_dirty = false;
+		};
 	};
 
 	var num_patterns = 99;
@@ -305,7 +290,7 @@ start_script.value {
 			} {
 				ticks_to_next = odd_ppqn;
 			};
-			set_dirty.value();
+			ui_dirty = true;
 		};
 
 		if (~grid.device_.notNil) {
@@ -355,7 +340,7 @@ start_script.value {
 				max: num_patterns,
 				default: 1,
 				action: {
-					set_dirty.value();
+					ui_dirty = true;
 				}
 			)
 		);
@@ -402,7 +387,7 @@ start_script.value {
 				controlspec: tempo_spec,
 				action: {
 					update_sequencer_metro_time.value();
-					set_dirty.value();
+					ui_dirty = true;
 				}
 			)
 		);
@@ -415,7 +400,7 @@ start_script.value {
 				controlspec: swing_amount_spec,
 				action: { |val|
 					update_even_odd_ppqn.value(val);
-					set_dirty.value();
+					ui_dirty = true;
 				}
 			)
 		);
@@ -464,7 +449,7 @@ TODO
 */
 					param.delta_(delta);
 				};
-				set_dirty.value();
+				ui_dirty = true;
 			};
 		};
 
@@ -475,7 +460,7 @@ TODO
 			if (state == 1) {
 				if (cutting_is_enabled.value() and: (y == 8)) { // TODO: y == 8 should be y == 7 everywhere
 					queued_playpos = x;
-					set_dirty.value(); // TODO: not correct
+					ui_dirty = true; // TODO: not correct
 				} {
 					set_trig.value(
 						~params.get_("pattern"),
@@ -483,7 +468,7 @@ TODO
 						y,
 						trig_is_set.value(~params.get_("pattern"), x, y).not
 					);
-					set_dirty.value();
+					ui_dirty = true;
 				}
 			};
 		};
@@ -505,7 +490,7 @@ TODO
 		var prev_focus = focus;
 		focus = nil;
 		if (prev_focus != focus) {
-			set_dirty.value();
+			ui_dirty = true;
 		};
 	};
 	
@@ -517,7 +502,7 @@ TODO
 		update_focus.value(mouse_over_pos); // TODO: only if mouse is not pressed(?)
 	
 		if (prev_focus != focus) {
-			set_dirty.value();
+			ui_dirty = true;
 		};
 	};
 
@@ -528,7 +513,7 @@ TODO
 			var trig_in_focus = focus[\pos];
 			if (cutting_is_enabled.value() and: (trig_in_focus.y == num_tracks)) {
 				queued_playpos = trig_in_focus.x;
-				set_dirty.value(); // TODO: not correct
+				ui_dirty = true; // TODO: not correct
 			} {
 				set_trig.value(patternno, trig_in_focus.x, trig_in_focus.y, trig_is_set.value(patternno, trig_in_focus.x, trig_in_focus.y).not);
 			};
@@ -565,7 +550,7 @@ TODO
 		active = focus;
 	
 		if (prev_active != active) {
-			set_dirty.value();
+			ui_dirty = true;
 		};
 	};
 
@@ -580,7 +565,7 @@ TODO
 			{ true } {
 				focus = nil;
 			};
-			set_dirty.value();
+			ui_dirty = true;
 		};
 	};
 
@@ -622,7 +607,7 @@ TODO
 		update_focus.value(x@y);
 	
 		if (prev_active != active) {
-			set_dirty.value();
+			ui_dirty = true;
 		};
 	};
 	
@@ -1066,7 +1051,7 @@ TODO
 		case
 		{n == 1} {
 			// TODO ~params.delta_("output_level", delta); // TODO: introduce engine specific output level
-			set_dirty.value();
+			ui_dirty = true;
 		}
 		{n == 2} {
 			~params.delta_("tempo", delta);
@@ -1131,7 +1116,7 @@ TODO
 				params_ui_cursor = (params_ui_cursor + params_ui_cursor_step) min: (~params[\params].size * params_ui_cursor_step);
 			};
 		};
-		set_dirty.value();
+		ui_dirty = true;
 	};
 
 	~mouse = { |what ... args| // TODO: get away from using varargs for ~mouse
