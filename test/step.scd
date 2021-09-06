@@ -1,5 +1,5 @@
 (
-// TODO: remove single character variables
+// TODO: remove single character variables which won't work in SC
 var include_relative = { |relative_path|
 	var path = (PathName(thisProcess.nowExecutingPath).pathOnly +/+ relative_path).standardizePath;
 	if (File.exists(path)) {
@@ -23,31 +23,10 @@ start_script.value {
 	// arc
 
 	var arc_device;
-	// TODO var arc_delta_callback;
 	var arc_refresh_callback;
-	// TODO var arc_is_inited = false;
 
 	var arc_connected = false;
 	var arc_dirty = false;
-
-/*
-	TODO
-	var init_arc = { |config|
-		if (config.device == nil) {
-			Error("init_arc: device is mandatory").throw;
-		};
-
-		arc_device = config.device;
-
-		arc_delta_callback = config[\on_delta];
-		arc_device[\delta] = { |n, delta| // not .delta notation to suppress self argument?
-			flash_event.value();
-			arc_delta_callback.value(n, delta);
-		};
-		arc_refresh_callback = config[\on_refresh];
-		arc_is_inited = true;
-	};
-*/
 
 	var check_arc_connected = {
 		var arc_check = arc_device.device_ != nil;
@@ -60,32 +39,11 @@ start_script.value {
 	// grid
 
 	var grid_device;
-	// TODO var grid_key_callback;
 	var grid_refresh_callback;
-	// TODO var grid_is_inited = false;
 
 	var grid_connected = false;
 	var grid_dirty = false;
 	var grid_width = Ref.new;
-
-/*
-	TODO
-	var init_grid = { |config|
-		if (config.device == nil) {
-			Error("init_grid: device is mandatory").throw;
-		};
-
-		grid_device = config.device;
-
-		grid_key_callback = config[\on_key];
-		grid_device[\key] = { |x, y, s| // not .key notation to suppress self argument?
-			flash_event.value();
-			grid_key_callback.value(x, y, s);
-		};
-		grid_refresh_callback = config[\on_refresh];
-		grid_is_inited = true;
-	};
-*/
 
 	var update_grid_width = {
 		if (grid_device.device_.notNil) {
@@ -140,30 +98,26 @@ start_script.value {
 	var refresh = {
 		update_event_indicator.value();
 
-		// TODO if (arc_is_inited) {
-			check_arc_connected.value();
+		check_arc_connected.value();
 
-			if (arc_dirty) {
-				if (arc_refresh_callback.notNil) {
-					arc_refresh_callback.value(arc_device);
-				};
-				arc_device.refresh_();
-				arc_dirty = false;
+		if (arc_dirty) {
+			if (arc_refresh_callback.notNil) {
+				arc_refresh_callback.value(arc_device);
 			};
-		// TODO };
+			arc_device.refresh_();
+			arc_dirty = false;
+		};
 
-		// TODO if (grid_is_inited) {
-			check_grid_connected.value();
-			update_grid_width.value();
+		check_grid_connected.value();
+		update_grid_width.value();
 
-			if (grid_dirty) {
-				if (grid_refresh_callback.notNil) {
-					grid_refresh_callback.value(grid_device);
-				};
-				grid_device.refresh_();
-				grid_dirty = false;
+		if (grid_dirty) {
+			if (grid_refresh_callback.notNil) {
+				grid_refresh_callback.value(grid_device);
 			};
-		// TODO };
+			grid_device.refresh_();
+			grid_dirty = false;
+		};
 
 		if (screen_dirty) {
 			if (screen_refresh_callback.notNil) {
@@ -476,54 +430,8 @@ start_script.value {
 	};
 
 	var init_ui = {
-/*
-		init_arc.value(
-			(
-				device: ~arc.connect_(),
-   				on_delta: { |n, delta|
-					case
-					{ mode == 'main' } {
-						case
-						{n == 1} {
-							var val = ~params.get_raw_("tempo");
-							~params.set_raw_("tempo", val+(delta/500));
-						}
-						{n == 2} {
-							var val = ~params.get_raw_("swing_amount");
-							~params.set_raw_("swing_amount", val+(delta/500));
-						}
-					}
-					{ mode == 'params' } {
-						case
-						{n == 1} {
-							params_ui_cursor = ((params_ui_cursor + delta) max: params_ui_cursor_step) min: (~params[\params].size*params_ui_cursor_step);
-						}
-						{n == 2} {
-							var params_ui_cursor_unstepped = (params_ui_cursor/params_ui_cursor_step).round;
-							var param = ~params[\params][params_ui_cursor_unstepped-1];
-/*
-	TODO
-							var val = param.get_raw_();
-							param.set_raw_(val+(delta/500));
-*/
-							param.delta_(delta);
-						};
-						set_dirty.value();
-					}
-				},
-   				on_refresh: { |my_arc|
-					my_arc.all_(1, 0);
-					my_arc.all_(2, 0);
-   					my_arc.led_(1, arc_led_x_spec.map(~params.get_raw_("tempo")), arc_led_l_spec.maxval);
-					my_arc.led_(2, arc_led_x_spec.map(~params.get_raw_("swing_amount")), arc_led_l_spec.maxval);
-   				}
-			)
-		);
-*/
-
 		arc_device = ~arc.connect_();
 
-		// TODO arc_delta_callback = config[\on_delta];
 		arc_device[\delta] = { |n, delta| // not .delta notation to suppress self argument?
 			flash_event.value();
 			case
@@ -563,67 +471,6 @@ TODO
 			my_arc.led_(2, arc_led_x_spec.map(~params.get_raw_("swing_amount")), arc_led_l_spec.maxval);
 		};
 
-/*
-	TODO
-		init_grid.value(
-			(
-				device: ~grid.connect_(),
-   				on_key: { |x, y, state| // TODO: single character
-					if (state == 1) {
-		   				if (cutting_is_enabled.value() and: (y == 8)) { // TODO: y == 8 should be y == 7 everywhere
-							queued_playpos = x;
-							set_dirty.value(); // TODO: not correct
-						} {
-		   					set_trig.value(
-								~params.get_("pattern"),
-			   					x,
-								y,
-			   					trig_is_set.value(~params.get_("pattern"), x, y).not
-							);
-		   					set_dirty.value();
-						}
-					};
-	   				flash_event.value();
-				},
-				on_refresh: { |my_grid|
-					var refresh_grid_button = { |x, y|
-						if (cutting_is_enabled.value() and: (y == 8)) {
-							if (x == playpos) {
-								my_grid.led_(x, y, playpos_level);
-							} {
-								my_grid.led_(x, y, clear_level);
-							};
-						} {
-							case
-							{trig_is_set.value(~params.get_("pattern"), x, y)} {
-   								my_grid.led_(x, y, trig_level)
-							}
-							{ x == playpos } {
-								my_grid.led_(x, y, playpos_level)
-							}
-							{ true } {
-								my_grid.led_(x, y, clear_level)
-							}
-						}
-					};
-
-					var refresh_grid_column = { |x|
-						(1..num_tracks).do { |y|
-							refresh_grid_button.value(x, y)
-						}
-					};
-
-					var refresh_grid = {
-						(1..steps_per_pattern).do { |stepnum|
-							refresh_grid_column.value(stepnum)
-						}
-					};
-
-					refresh_grid.value();
-				}
-			)
-		);
-*/
 		grid_device = ~grid.connect_();
 
 		grid_device[\key] = { |x, y, state| // not .key notation to suppress self argument? // TODO: x, y are single character
