@@ -23,26 +23,13 @@ start_script.value {
 	// arc
 
 	var arc_device;
-	// TODO: not used var arc_connected = false;
 	var arc_dirty = false;
-
-/*
-	TODO: not used
-	var check_arc_connected = {
-		var arc_check = arc_device.device_ != nil;
-		if (arc_connected != arc_check) {
-			arc_connected = arc_check;
-			arc_dirty = true;
-		};
-	};
-*/
 
 	// grid
 
 	var grid_device;
-	// TODO: not used var grid_connected = false;
 	var grid_dirty = false;
-	var grid_width = Ref.new;
+	var grid_width = Ref.new; // TODO: do not wrap as Ref
 
 	var update_grid_width = {
 		if (grid_device.device_.notNil) {
@@ -52,17 +39,6 @@ start_script.value {
 		};
 	};
 
-/*
-	TODO: not used
-	var check_grid_connected = {
-		var grid_check = (grid_device.device != nil);
-		if (grid_connected != grid_check) {
-			grid_connected = grid_check;
-			grid_dirty = true;
-		};
-	};
-*/
-  
 	// event flash
 
 	var show_event_indicator = false;
@@ -99,8 +75,6 @@ start_script.value {
 	var refresh_ui = {
 		update_event_indicator.value();
 
-		// TODO: not used check_arc_connected.value();
-
 		if (arc_dirty) {
 			my_arc.all_(1, 0);
 			my_arc.all_(2, 0);
@@ -110,7 +84,6 @@ start_script.value {
 			arc_dirty = false;
 		};
 
-		// TODO: not used check_grid_connected.value();
 		update_grid_width.value();
 
 		if (grid_dirty) {
