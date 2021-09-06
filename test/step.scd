@@ -23,8 +23,6 @@ start_script.value {
 	// arc
 
 	var arc_device;
-	var arc_refresh_callback;
-
 	var arc_connected = false;
 	var arc_dirty = false;
 
@@ -39,8 +37,6 @@ start_script.value {
 	// grid
 
 	var grid_device;
-	var grid_refresh_callback;
-
 	var grid_connected = false;
 	var grid_dirty = false;
 	var grid_width = Ref.new;
@@ -91,19 +87,19 @@ start_script.value {
 	// screen
 
 	var screen_dirty = false;
-	var screen_refresh_callback;
 
-	// refresh logic
+	// ui refresh logic
 
-	var refresh = {
+	var refresh_ui = {
 		update_event_indicator.value();
 
 		check_arc_connected.value();
 
 		if (arc_dirty) {
-			if (arc_refresh_callback.notNil) {
-				arc_refresh_callback.value(arc_device);
-			};
+			my_arc.all_(1, 0);
+			my_arc.all_(2, 0);
+			my_arc.led_(1, arc_led_x_spec.map(~params.get_raw_("tempo")), arc_led_l_spec.maxval);
+			my_arc.led_(2, arc_led_x_spec.map(~params.get_raw_("swing_amount")), arc_led_l_spec.maxval);
 			arc_device.refresh_();
 			arc_dirty = false;
 		};
@@ -112,18 +108,46 @@ start_script.value {
 		update_grid_width.value();
 
 		if (grid_dirty) {
-			if (grid_refresh_callback.notNil) {
-				grid_refresh_callback.value(grid_device);
+			var refresh_grid_button = { |x, y|
+				if (cutting_is_enabled.value() and: (y == 8)) {
+					if (x == playpos) {
+						grid_device.led_(x, y, playpos_level);
+					} {
+						grid_device.led_(x, y, clear_level);
+					};
+				} {
+					case
+					{trig_is_set.value(~params.get_("pattern"), x, y)} {
+						grid_device.led_(x, y, trig_level)
+					}
+					{ x == playpos } {
+						grid_device.led_(x, y, playpos_level)
+					}
+					{ true } {
+						grid_device.led_(x, y, clear_level)
+					}
+				}
 			};
+
+			var refresh_grid_column = { |x|
+				(1..num_tracks).do { |y|
+					refresh_grid_button.value(x, y)
+				}
+			};
+
+			var refresh_grid = {
+				(1..steps_per_pattern).do { |stepnum|
+					refresh_grid_column.value(stepnum)
+				}
+			};
+
+			refresh_grid.value(); // TODO: naming
 			grid_device.refresh_();
 			grid_dirty = false;
 		};
 
 		if (screen_dirty) {
-			if (screen_refresh_callback.notNil) {
-				screen_refresh_callback.value();
-			};
-			~screen.update_(); // norns global
+			~redraw.value();
 			screen_dirty = false;
 		};
 	};
@@ -424,7 +448,7 @@ start_script.value {
 
 	var init_60_fps_ui_refresh_metro = {
 		var ui_refresh_metro = ~metro.init_();
-		ui_refresh_metro.event = refresh;
+		ui_refresh_metro.event = refresh_ui;
 		ui_refresh_metro.time = 1/60;
 		ui_refresh_metro.start_();
 	};
@@ -464,12 +488,6 @@ TODO
 				set_dirty.value();
 			};
 		};
-		arc_refresh_callback = { |my_arc|
-			my_arc.all_(1, 0);
-			my_arc.all_(2, 0);
-			my_arc.led_(1, arc_led_x_spec.map(~params.get_raw_("tempo")), arc_led_l_spec.maxval);
-			my_arc.led_(2, arc_led_x_spec.map(~params.get_raw_("swing_amount")), arc_led_l_spec.maxval);
-		};
 
 		grid_device = ~grid.connect_();
 
@@ -489,46 +507,6 @@ TODO
 					set_dirty.value();
 				}
 			};
-		};
-		grid_refresh_callback = { |my_grid|
-			var refresh_grid_button = { |x, y|
-				if (cutting_is_enabled.value() and: (y == 8)) {
-					if (x == playpos) {
-						my_grid.led_(x, y, playpos_level);
-					} {
-						my_grid.led_(x, y, clear_level);
-					};
-				} {
-					case
-					{trig_is_set.value(~params.get_("pattern"), x, y)} {
-						my_grid.led_(x, y, trig_level)
-					}
-					{ x == playpos } {
-						my_grid.led_(x, y, playpos_level)
-					}
-					{ true } {
-						my_grid.led_(x, y, clear_level)
-					}
-				}
-			};
-
-			var refresh_grid_column = { |x|
-				(1..num_tracks).do { |y|
-					refresh_grid_button.value(x, y)
-				}
-			};
-
-			var refresh_grid = {
-				(1..steps_per_pattern).do { |stepnum|
-					refresh_grid_column.value(stepnum)
-				}
-			};
-
-			refresh_grid.value();
-		};
-
-		screen_refresh_callback = {
-			~redraw.value()
 		};
 
 		init_60_fps_ui_refresh_metro.value();
@@ -914,8 +892,6 @@ TODO
 		redraw_enc3_widget.value();
 		redraw_key2_widget.value();
 		redraw_key3_widget.value();
-
-		~screen.update_();
 	};
 
 	var steps_widget_x = 2;
@@ -1000,8 +976,6 @@ TODO
 		if (show_event_indicator) {
 			redraw_event_flash_widget.value();
 		};
-
-		~screen.update_();
 	};
 
 	var redraw_params_ui = {
@@ -1050,8 +1024,6 @@ TODO
 				redraw_param.value(param, 1 + ((count+1) * 10), level);
 			}
 		};
-
-		~screen.update_();
 	};
 
 	var cycle_mode = {
@@ -1090,9 +1062,9 @@ TODO
 		save_patterns.value();
 /*
 	TODO
-		if (my_grid.device_.notNil) {
-			my_grid.all_(0);
-			my_grid.refresh_();
+		if (grid_device.device_.notNil) {
+			grid_device.all_(0);
+			grid_device.refresh_();
 		};
 */
 	};
@@ -1108,6 +1080,7 @@ TODO
 		{ mode == 'params' } {
 			redraw_params_ui.value();
 		};
+		~screen.update_(); // norns global
 	};
 
 	~enc = { |n, delta|
