@@ -11,8 +11,9 @@ var include_relative = { |relative_path|
 
 var norns_engine_tester = include_relative.value("../../r/util/norns_engine_tester.scd");
 var start_script = norns_engine_tester['start_script'];
+var script_name = PathName(thisProcess.nowExecutingPath).fileNameWithoutExtension;
 
-start_script.value {
+start_script.value(script_name) {
 	var ack = include_relative.value("lib/ack.scd");
 	var ack_add_params = ack[\add_params];
 
@@ -29,12 +30,12 @@ start_script.value {
 	// grid
 
 	var grid_device;
-	var grid_width = Ref.new; // TODO: do not wrap as Ref
+	var grid_width;
 
 	var update_grid_width = {
 		if (grid_device.device_.notNil) {
-			if (grid_width.dereference != grid_device.cols_) {
-				grid_width.set(grid_device.cols_);
+			if (grid_width != grid_device.cols_) {
+				grid_width = grid_device.cols_;
 			};
 		};
 	};
@@ -283,6 +284,7 @@ start_script.value {
 					ts[tracknum-1] = 0;
 				}
 			};
+			[\engine, \multiTrig_, ts[0], ts[1], ts[2], ts[3], ts[4], ts[5], ts[6], ts[7]].debug;
 			~engine.multiTrig_(ts[0], ts[1], ts[2], ts[3], ts[4], ts[5], ts[6], ts[7]);
 
 			if (playpos.even) {
@@ -294,7 +296,7 @@ start_script.value {
 		};
 
 		if (~grid.device_.notNil) {
-			var current_grid_width = grid_width.dereference;
+			var current_grid_width = grid_width;
 
 			if (get_pattern_length.value != current_grid_width) {
 				set_pattern_length.value(current_grid_width);
