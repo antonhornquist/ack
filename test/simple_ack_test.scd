@@ -1,4 +1,5 @@
-( var include_relative = { |relative_path|
+(
+var include_relative = { |relative_path|
 	var path = (PathName(thisProcess.nowExecutingPath).pathOnly +/+ relative_path).standardizePath;
 	if (File.exists(path)) {
 		this.executeFile(path);
