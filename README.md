@@ -1,6 +1,3 @@
----
----
-
 # Ack
 
 Simple sample player
