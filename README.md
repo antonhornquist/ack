@@ -70,7 +70,7 @@ Default Ack parameters to control channel and effects settings can be added to t
 Require the Ack module:
 
 ``` lua
-local Ack = require 'lib/jah/ack'
+local Ack = require 'ack/lib/ack'
 ```
 
 To add all params:
