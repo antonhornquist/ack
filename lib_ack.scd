@@ -11,7 +11,7 @@ var include_relative = { |relative_path|
 
 var numChannels = 8;
 
-var ack = include_relative.value(".." +/+ "ack.scd");
+var ack = include_relative.value("ack.scd");
 var getChannelSpecs = ack[\getChannelSpecs];
 var getEffectSpecs = ack[\getEffectSpecs];
 
