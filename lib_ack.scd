@@ -18,7 +18,7 @@ var getEffectSpecs = ack[\getEffectSpecs];
 var channelSpecs = getChannelSpecs.value;
 var effectSpecs = getEffectSpecs.value;
 
-var formatters = include_relative.value("formatters.scd");
+var formatters = include_relative.value("lib" +/+ "formatters.scd");
 
 var add_channel_sample_param = { |channel|
 	~params.add_(
