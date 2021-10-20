@@ -41,6 +41,9 @@ specs.reverb_damp = ControlSpec.new(0, 1, 'lin', 0, 0.5, '')
 specs.reverb_level = ControlSpec.DB:copy()
 specs.reverb_level.default = -10
 
+specs.main_level = ControlSpec.DB:copy()
+specs.main_level.default = 0
+
 Ack.specs = specs
 
 function Ack.add_channel_sample_param(channel)
@@ -209,6 +212,11 @@ function Ack.add_effects_params()
   params:set_action("reverb_level", engine.reverbLevel)
 end
 
+function Ack.add_main_level_param()
+  params:add_control("main_level", "main output level", specs.main_level, Formatters.default) ?
+  params:set_action("main_level", engine.mainLevel)
+end
+
 function Ack.add_params()
   for channel=1,8 do
     Ack.add_channel_params(channel)
@@ -216,6 +224,7 @@ function Ack.add_params()
   end
 
   Ack.add_effects_params()
+  Ack.add_main_level_param()
 end
 
 return Ack

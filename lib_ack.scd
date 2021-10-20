@@ -14,9 +14,11 @@ var numChannels = 8;
 var ack = include_relative.value("ack.scd");
 var getChannelSpecs = ack[\getChannelSpecs];
 var getEffectSpecs = ack[\getEffectSpecs];
+var getMainLevelSpec = ack[\getMainLevelSpec];
 
 var channelSpecs = getChannelSpecs.value;
 var effectSpecs = getEffectSpecs.value;
+var mainLevelSpec = getMainLevelSpec.value;
 
 var formatters = include_relative.value("lib" +/+ "formatters.scd");
 
@@ -420,6 +422,19 @@ var add_reverb_level_param = {
 	);
 };
 
+var add_main_level_param = {
+	~params.add_(
+		(
+			type: "control",
+			id: "main_level",
+			name: "main output level",
+			controlspec: mainLevelSpec,
+			formatter: formatters[\default],
+			action: { |value| ~engine.mainLevel_(value) }
+		)
+	);
+};
+
 var add_effects_params = {
 	add_delay_time_param.value();
 	add_delay_feedback_param.value();
@@ -427,6 +442,7 @@ var add_effects_params = {
 	add_reverb_room_size_param.value();
 	add_reverb_damp_param.value();
 	add_reverb_level_param.value();
+	add_main_level_param.value();
 };
 
 var add_params = {
@@ -469,7 +485,8 @@ var exports = IdentityDictionary[
 	\add_delay_level_param -> add_delay_level_param,
 	\add_reverb_room_size_param -> add_reverb_room_size_param,
 	\add_reverb_damp_param -> add_reverb_damp_param,
-	\add_reverb_level_param -> add_reverb_level_param
+	\add_reverb_level_param -> add_reverb_level_param,
+	\add_main_level_param -> add_main_level_param
 ];
 
 exports
