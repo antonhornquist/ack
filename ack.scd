@@ -48,15 +48,19 @@ var parseOptions = { |options|
 };
 
 var initServerResources = { |instance|
+	var mainLevelBus = Bus.audio(numChannels: 2);
+	instance[\mainLevelBus] = mainLevelBus;
 	sendSynthDefsToServer.value(instance); // TODO: it should be possible to decrease r init time by sending synthdefs lazily to server (add this as an option?)
 	initSamplePlayerServerResources.value(instance);
 	initEffectsServerResources.value(instance);
+	initMainLevelServerResources.value(instance);
 	Server.default.sync;
 };
 
 var sendSynthDefsToServer = { |instance|
 	sendSamplePlayerSynthDefsToServer.value(instance);
 	sendEffectSynthDefsToServer.value(instance);
+	sendMainLevelSynthDefToServer.value(instance);
 };
 
 var sendSamplePlayerSynthDefsToServer = { |instance|
@@ -175,7 +179,7 @@ var sendEffectSynthDefsToServer = { |instance|
 		metadata: (
 			specs: ( // TODO: add in: \audiobus ??
 				out: \audiobus,
-				reverbRoom: effectSpecs[\reverbRoom],
+				reverbRoom: effectSpecs[\reverbRoom], // TODO: does not match with ugenGraphFunc arguments!?
 				reverbDamp: effectSpecs[\reverbDamp],
 				reverbLevel: effectSpecs[\reverbLevel]
 			)
@@ -187,6 +191,32 @@ var sendEffectSynthDefsToServer = { |instance|
 		"".inform;
 	};
 
+};
+
+var sendMainLevelSynthDefToServer = { |instance|
+	if (instance[\trace]) {
+		"sending SynthDef %...".format(mainLevelDefName.asString.quote).inform; // TODO: post*
+	};
+
+	SynthDef(
+		mainLevelDefName,
+		{ |in, out, level|
+			var sig = In.ar(in, 2);
+			Out.ar(out, sig * level.dbamp);
+		},
+		rates: [nil, nil, 0.1],
+		metadata: (
+			specs: (
+				in: \audiobus,
+				out: \audiobus,
+				level: mainLevelSpec // TODO: does not match with ugenGraphFunc arguments!?
+			)
+		)
+	).add;
+
+	if (instance[\trace]) {
+		"...OK.".inform; // TODO: post*
+	};
 };
 
 var spawnUgenGraphFunc = { |bufrdPanFunc|
@@ -319,11 +349,18 @@ var initEffectsServerResources = { |instance|
 	var delayBus = Bus.audio(numChannels: 2);
 	var reverbBus = Bus.audio(numChannels: 2);
 	Server.default.sync;
-	instance[\delaySynth] = Synth(delayDefName, [\out, instance[\outBus], \in, delayBus], target: effectsGroup);
-	instance[\reverbSynth] = Synth(reverbDefName, [\out, instance[\outBus], \in, reverbBus], target: effectsGroup);
+	instance[\delaySynth] = Synth(delayDefName, [\out, instance[\mainLevelBus], \in, delayBus], target: effectsGroup);
+	instance[\reverbSynth] = Synth(reverbDefName, [\out, instance[\mainLevelBus], \in, reverbBus], target: effectsGroup);
 	instance[\delayBus] = delayBus;
 	instance[\reverbBus] = reverbBus;
 	instance[\effectsGroup] = effectsGroup;
+};
+
+var initMainLevelServerResources = { |instance|
+	var mainLevelGroup = Group.tail(instance[\group]);
+	instance[\mainLevelGroup] = mainLevelGroup;
+	Server.default.sync;
+	instance[\mainLevelSynth] = Synth(mainLevelDefName, [\out, instance[\outBus], \in, instance[\mainLevelBus]], target: mainLevelGroup);
 };
 
 var postAutobootingServerInformation = {
@@ -341,13 +378,16 @@ var free = { |self, freeServerNodes=true| // TODO: on CmdPeriod make so that fre
 		self[\samplePlayerSynths] do: _.free;
 		self[\channelGroups] do: _.free;
 		self[\effectsGroup].free;
+		self[\mainLevelGroup].free;
 		self[\delaySynth].free;
 		self[\reverbSynth].free;
+		self[\mainLevelSynth].free;
 	};
 
 	self[\channelControlBusses] do: { |dict| dict do: _.free };
 	self[\delayBus].free;
 	self[\reverbBus].free;
+	self[\mainLevelBus].free;
 	self[\buffers] do: _.free;
 
 	"Ack freed successfully.".postln;
@@ -369,7 +409,7 @@ var trigCommand = { |self, channelnum|
 	if (sampleIsLoaded.value(self, channelnum)) {
 		var samplePlayerSynthArgs = [
 			\gate, 1,
-			\out, self[\outBus],
+			\out, self[\mainLevelBus],
 			\delayBus, self[\delayBus],
 			\reverbBus, self[\reverbBus],
 			\bufnum, self[\buffers][channelnum]
@@ -524,6 +564,10 @@ var reverbLevelCommand = { |self, value|
 	effectCommand.value(self, \reverbLevel, value);
 };
 
+var mainLevelCommand = { |self, value|
+	self[\mainLevelGroup].set("level", mainLevelSpec.constrain(value));
+};
+
 var killChannel = { |self, channelnum|
 	self[\channelGroups][channelnum].set(\gate, 0);
 };
@@ -600,6 +644,10 @@ var getEffectSpecs = {
 	effectSpecs.copy;
 };
 
+var getMainLevelSpec = {
+	mainLevelSpec.copy;
+};
+
 var channelSpecs = (
 	sampleStart: \unipolar.asSpec,
 	sampleEnd: \unipolar.asSpec.copy.default_(1),
@@ -636,10 +684,13 @@ var effectSpecs = (
 	reverbLevel: \db.asSpec.copy.default_(-10)
 );
 
+var mainLevelSpec = \db.asSpec.copy.default_(0);
+
 var monoSamplePlayerDefName = 'Ack_Mono';
 var stereoSamplePlayerDefName = 'Ack_Stereo';
 var delayDefName = 'Ack_Delay';
 var reverbDefName = 'Ack_Reverb';
+var mainLevelDefName = 'Ack_MainLevel';
 
 var asDict = { |arrayOfAssociations|
 	IdentityDictionary.newFrom( arrayOfAssociations.collect { |assoc| [ assoc.key, assoc.value ] }.flatten );
@@ -681,8 +732,10 @@ var exports = IdentityDictionary[
 	\reverbRoomCommand -> reverbRoomCommand,
 	\reverbDampCommand -> reverbDampCommand,
 	\reverbLevelCommand -> reverbLevelCommand,
+	\mainLevelCommand -> mainLevelCommand,
 	\getChannelSpecs -> getChannelSpecs,
-	\getEffectSpecs -> getEffectSpecs
+	\getEffectSpecs -> getEffectSpecs,
+	\getMainLevelSpec -> getMainLevelSpec
 ];
 
 exports

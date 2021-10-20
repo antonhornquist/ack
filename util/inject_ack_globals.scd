@@ -36,4 +36,5 @@ var ack = this.executeFile(ack_path);
 ~reverbRoomCommand = ack[\reverbRoomCommand];
 ~reverbDampCommand = ack[\reverbDampCommand];
 ~reverbLevelCommand = ack[\reverbLevelCommand];
+~mainLevelCommand = ack[\mainLevelCommand];
 )
