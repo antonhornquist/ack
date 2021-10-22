@@ -442,7 +442,6 @@ var add_effects_params = {
 	add_reverb_room_size_param.value();
 	add_reverb_damp_param.value();
 	add_reverb_level_param.value();
-	add_main_level_param.value();
 };
 
 var add_params = {
@@ -452,6 +451,7 @@ var add_params = {
 	};
 
 	add_effects_params.value();
+	add_main_level_param.value();
 };
 
 var exports = IdentityDictionary[
