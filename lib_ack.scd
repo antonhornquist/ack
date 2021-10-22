@@ -3,7 +3,7 @@ var include_relative = { |relative_path|
 	var path = (PathName(thisProcess.nowExecutingPath).pathOnly +/+ relative_path).standardizePath;
 	if (File.exists(path)) {
 		var result = this.executeFile(path);
-		if (result.isNil) { Error("error importing %".format(path)).throw; } { result }; // TODO: adopt in other places too
+		if (result.isNil) { Error("error importing %".format(path)).throw; } { result };
 	} {
 		Error("include_relative: file % does not exist".format(path.quote)).throw;
 	};
@@ -422,6 +422,15 @@ var add_reverb_level_param = {
 	);
 };
 
+var add_effects_params = {
+	add_delay_time_param.value();
+	add_delay_feedback_param.value();
+	add_delay_level_param.value();
+	add_reverb_room_size_param.value();
+	add_reverb_damp_param.value();
+	add_reverb_level_param.value();
+};
+
 var add_main_level_param = {
 	~params.add_(
 		(
@@ -435,19 +444,10 @@ var add_main_level_param = {
 	);
 };
 
-var add_effects_params = {
-	add_delay_time_param.value();
-	add_delay_feedback_param.value();
-	add_delay_level_param.value();
-	add_reverb_room_size_param.value();
-	add_reverb_damp_param.value();
-	add_reverb_level_param.value();
-};
-
 var add_params = {
 	numChannels.do { |channelnum|
 		add_channel_params.value(channelnum+1);
-		// TODO ~params.add_separator_();
+		~params.add_separator_();
 	};
 
 	add_effects_params.value();
