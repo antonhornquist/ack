@@ -50,7 +50,7 @@ var parseOptions = { |options|
 var initServerResources = { |instance|
 	var mainLevelBus = Bus.audio(numChannels: 2);
 	instance[\mainLevelBus] = mainLevelBus;
-	sendSynthDefsToServer.value(instance); // TODO: it should be possible to decrease r init time by sending synthdefs lazily to server (add this as an option?)
+	sendSynthDefsToServer.value(instance);
 	initSamplePlayerServerResources.value(instance);
 	initEffectsServerResources.value(instance);
 	initMainLevelServerResources.value(instance);
@@ -139,7 +139,7 @@ var sendSamplePlayerSynthDefsToServer = { |instance|
 
 var sendEffectSynthDefsToServer = { |instance|
 	if (instance[\trace]) {
-		"sending SynthDef %...".format(delayDefName.asString.quote).inform; // TODO: post*
+		"sending SynthDef %...".format(delayDefName.asString.quote).inform;
 	};
 
 	SynthDef(
@@ -164,9 +164,9 @@ var sendEffectSynthDefsToServer = { |instance|
 	).add;
 
 	if (instance[\trace]) {
-		"...OK.".inform; // TODO: post*
+		"...OK.".inform;
 		"".inform;
-		"sending SynthDef %...".format(reverbDefName.asString.quote).inform; // TODO: post*
+		"sending SynthDef %...".format(reverbDefName.asString.quote).inform;
 	};
 
 	SynthDef(
@@ -187,7 +187,7 @@ var sendEffectSynthDefsToServer = { |instance|
 	).add;
 
 	if (instance[\trace]) {
-		"...OK.".inform; // TODO: post*
+		"...OK.".inform;
 		"".inform;
 	};
 
@@ -195,7 +195,7 @@ var sendEffectSynthDefsToServer = { |instance|
 
 var sendMainLevelSynthDefToServer = { |instance|
 	if (instance[\trace]) {
-		"sending SynthDef %...".format(mainLevelDefName.asString.quote).inform; // TODO: post*
+		"sending SynthDef %...".format(mainLevelDefName.asString.quote).inform;
 	};
 
 	SynthDef(
@@ -215,7 +215,7 @@ var sendMainLevelSynthDefToServer = { |instance|
 	).add;
 
 	if (instance[\trace]) {
-		"...OK.".inform; // TODO: post*
+		"...OK.".inform;
 	};
 };
 
