@@ -48,7 +48,6 @@ First argument is always channel.
 - `includeInMuteGroup ii` - 0 or 1. 1 means channel will be muted if other channel in mute group is played.
 - `delaySend if` - delay send expressed in dB.
 - `reverbSend if` - reverb send expressed in dB.
-- `mainLevel if` - main output level expressed in dB.
 
 ### Effects Settings
 
@@ -58,6 +57,10 @@ First argument is always channel.
 - `reverbRoom f` - reverb room 0 .. 1.
 - `reverbDamp f` - reverb damp 0 .. 1.
 - `reverbLevel f` - reverb level expressed in dB.
+
+### Other Settings
+
+- `mainLevel if` - main output level expressed in dB.
 
 ## Using the Ack Lua Module
 
