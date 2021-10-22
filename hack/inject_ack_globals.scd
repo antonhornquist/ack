@@ -1,5 +1,5 @@
 (
-var ack_path = (PathName(thisProcess.nowExecutingPath).pathOnly +/+ ".." +/+ "ack.scd").standardizePath;
+var ack_path = (PathName(thisProcess.nowExecutingPath).pathOnly +/+ ".." +/+ "lib" +/+ "ack.scd").standardizePath;
 var ack = this.executeFile(ack_path);
 ~init = ack[\init];
 ~free = ack[\free];

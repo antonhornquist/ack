@@ -8,7 +8,7 @@ var include_relative = { |relative_path|
 	};
 };
 
-include_relative.value(".." +/+ "util" +/+ "inject_ack_globals.scd");
+include_relative.value("inject_ack_globals.scd");
 
 s.waitForBoot {
 	a = ~init.value();
