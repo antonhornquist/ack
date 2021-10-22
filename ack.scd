@@ -565,7 +565,7 @@ var reverbLevelCommand = { |self, value|
 };
 
 var mainLevelCommand = { |self, value|
-	self[\mainLevelGroup].set("level", mainLevelSpec.constrain(value));
+	self[\mainLevelSynth].set("level", mainLevelSpec.constrain(value));
 };
 
 var killChannel = { |self, channelnum|
