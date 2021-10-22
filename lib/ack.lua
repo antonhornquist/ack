@@ -213,7 +213,7 @@ function Ack.add_effects_params()
 end
 
 function Ack.add_main_level_param()
-  params:add_control("main_level", "main output level", specs.main_level, Formatters.default) ?
+  params:add_control("main_level", "main output level", specs.main_level, Formatters.default)
   params:set_action("main_level", engine.mainLevel)
 end
 
