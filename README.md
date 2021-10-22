@@ -48,6 +48,7 @@ First argument is always channel.
 - `includeInMuteGroup ii` - 0 or 1. 1 means channel will be muted if other channel in mute group is played.
 - `delaySend if` - delay send expressed in dB.
 - `reverbSend if` - reverb send expressed in dB.
+- `mainLevel if` - main output level expressed in dB.
 
 ### Effects Settings
 
@@ -128,3 +129,6 @@ Effects settings:
 - `reverb damp` - 0-100%
 - `reverb level` - expressed in dB
 
+Other settings:
+
+- `main output level` - expressed in dB
