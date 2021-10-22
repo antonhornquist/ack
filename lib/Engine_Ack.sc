@@ -865,42 +865,42 @@ Engine_Ack : CroneEngine {
 	}
 
 	addCommands {
-		this.addCommand(\loadSample, "is") { |msg| loadSampleCommand.value(msg[1], msg[2]) };
-		this.addCommand(\multiTrig, "iiiiiiii") { |msg| multiTrigCommand.value(msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7], msg[8]) };
-		this.addCommand(\trig, "i") { |msg| trigCommand.value(msg[1]) };
-		this.addCommand(\multiKill, "iiiiiiii") { |msg| multiKillCommand.value(msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7], msg[8]) };
-		this.addCommand(\kill, "i") { |msg| killCommand.value(msg[1]) };
-		this.addCommand(\includeInMuteGroup, "ii") { |msg| includeInMuteGroupCommand.value(msg[1], msg[2]) };
-		this.addCommand(\sampleStart, "if") { |msg| sampleStartCommand.value(msg[1], msg[2]) };
-		this.addCommand(\sampleEnd, "if") { |msg| sampleEndCommand.value(msg[1], msg[2]) };
-		this.addCommand(\loopPoint, "if") { |msg| loopPointCommand.value(msg[1], msg[2]) };
-		this.addCommand(\enableLoop, "i") { |msg| enableLoopCommand.value(msg[1]) };
-		this.addCommand(\disableLoop, "i") { |msg| disableLoopCommand.value(msg[1]) };
-		this.addCommand(\speed, "if") { |msg| speedCommand.value(msg[1], msg[2]) };
-		this.addCommand(\volume, "if") { |msg| volumeCommand.value(msg[1], msg[2]) };
-		this.addCommand(\volumeEnvAttack, "if") { |msg| volumeEnvAttackCommand.value(msg[1], msg[2]) };
-		this.addCommand(\volumeEnvRelease, "if") { |msg| volumeEnvReleaseCommand.value(msg[1], msg[2]) };
-		this.addCommand(\pan, "if") { |msg| panCommand.value(msg[1], msg[2]) };
-		this.addCommand(\filterCutoff, "if") { |msg| filterCutoffCommand.value(msg[1], msg[2]) };
-		this.addCommand(\filterRes, "if") { |msg| filterResCommand.value(msg[1], msg[2]) };
-		this.addCommand(\filterMode, "ii") { |msg| filterModeCommand.value(msg[1], msg[2]) };
-		this.addCommand(\filterEnvAttack, "if") { |msg| filterEnvAttackCommand.value(msg[1], msg[2]) };
-		this.addCommand(\filterEnvRelease, "if") { |msg| filterEnvReleaseCommand.value(msg[1], msg[2]) };
-		this.addCommand(\filterEnvMod, "if") { |msg| filterEnvModCommand.value(msg[1], msg[2]) };
-		this.addCommand(\dist, "if") { |msg| distCommand.value(msg[1], msg[2]) };
-		this.addCommand(\bitDepth, "if") { |msg| bitDepthCommand.value(msg[1], msg[2]) };
-		this.addCommand(\dist, "if") { |msg| distCommand.value(msg[1], msg[2]) };
-		this.addCommand(\delaySend, "if") { |msg| delaySendCommand.value(msg[1], msg[2]) };
-		this.addCommand(\reverbSend, "if") { |msg| reverbSendCommand.value(msg[1], msg[2]) };
+		this.addCommand(\loadSample, "is") { |msg| loadSampleCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\multiTrig, "iiiiiiii") { |msg| multiTrigCommand.value(scdBasedAckInstance, msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7], msg[8]) };
+		this.addCommand(\trig, "i") { |msg| trigCommand.value(scdBasedAckInstance, msg[1]) };
+		this.addCommand(\multiKill, "iiiiiiii") { |msg| multiKillCommand.value(scdBasedAckInstance, msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7], msg[8]) };
+		this.addCommand(\kill, "i") { |msg| killCommand.value(scdBasedAckInstance, msg[1]) };
+		this.addCommand(\includeInMuteGroup, "ii") { |msg| includeInMuteGroupCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\sampleStart, "if") { |msg| sampleStartCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\sampleEnd, "if") { |msg| sampleEndCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\loopPoint, "if") { |msg| loopPointCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\enableLoop, "i") { |msg| enableLoopCommand.value(scdBasedAckInstance, msg[1]) };
+		this.addCommand(\disableLoop, "i") { |msg| disableLoopCommand.value(scdBasedAckInstance, msg[1]) };
+		this.addCommand(\speed, "if") { |msg| speedCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\volume, "if") { |msg| volumeCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\volumeEnvAttack, "if") { |msg| volumeEnvAttackCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\volumeEnvRelease, "if") { |msg| volumeEnvReleaseCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\pan, "if") { |msg| panCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\filterCutoff, "if") { |msg| filterCutoffCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\filterRes, "if") { |msg| filterResCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\filterMode, "ii") { |msg| filterModeCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\filterEnvAttack, "if") { |msg| filterEnvAttackCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\filterEnvRelease, "if") { |msg| filterEnvReleaseCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\filterEnvMod, "if") { |msg| filterEnvModCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\dist, "if") { |msg| distCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\bitDepth, "if") { |msg| bitDepthCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\dist, "if") { |msg| distCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\delaySend, "if") { |msg| delaySendCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\reverbSend, "if") { |msg| reverbSendCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
 
-		this.addCommand(\delayTime, "f") { |msg| delayTimeCommand.value(msg[1]) };
-		this.addCommand(\delayFeedback, "f") { |msg| delayFeedbackCommand.value(msg[1]) };
-		this.addCommand(\delayLevel, "f") { |msg| delayLevelCommand.value(msg[1]) };
-		this.addCommand(\reverbRoom, "f") { |msg| reverbRoomCommand.value(msg[1]) };
-		this.addCommand(\reverbDamp, "f") { |msg| reverbDampCommand.value(msg[1]) };
-		this.addCommand(\reverbLevel, "f") { |msg| reverbLevelCommand.value(msg[1]) };
+		this.addCommand(\delayTime, "f") { |msg| delayTimeCommand.value(scdBasedAckInstance, msg[1]) };
+		this.addCommand(\delayFeedback, "f") { |msg| delayFeedbackCommand.value(scdBasedAckInstance, msg[1]) };
+		this.addCommand(\delayLevel, "f") { |msg| delayLevelCommand.value(scdBasedAckInstance, msg[1]) };
+		this.addCommand(\reverbRoom, "f") { |msg| reverbRoomCommand.value(scdBasedAckInstance, msg[1]) };
+		this.addCommand(\reverbDamp, "f") { |msg| reverbDampCommand.value(scdBasedAckInstance, msg[1]) };
+		this.addCommand(\reverbLevel, "f") { |msg| reverbLevelCommand.value(scdBasedAckInstance, msg[1]) };
 
-		this.addCommand(\mainLevel, "f") { |msg| mainLevelCommand.value(msg[1]) };
+		this.addCommand(\mainLevel, "f") { |msg| mainLevelCommand.value(scdBasedAckInstance, msg[1]) };
 	 }
 
 	scdBasedFree {
