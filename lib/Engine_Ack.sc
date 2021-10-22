@@ -808,7 +808,7 @@ Engine_Ack : CroneEngine {
 	// new scd based engine logic below. sc based one (above) to be phased out.
 
 	getScdBasedEngine {
-		var scdFilePath = (PathName(this.class.filenameSymbol.asString).pathOnly +/+ ".." +/+ "ack.scd").standardizePath;
+		var scdFilePath = (PathName(this.class.filenameSymbol.asString).pathOnly +/+ "ack.scd").standardizePath;
 
 		^thisProcess.interpreter.executeFile(scdFilePath);
 	}

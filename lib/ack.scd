@@ -706,7 +706,7 @@ var include_relative = { |relative_path|
 	};
 };
 
-var formatters = include_relative.value("lib" +/+ "formatters.scd");
+var formatters = include_relative.value("formatters.scd");
 
 var add_channel_sample_param = { |channel|
 	~params.add_(
