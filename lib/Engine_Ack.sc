@@ -1,5 +1,7 @@
 Engine_Ack : CroneEngine {
 	classvar debug = false;
+	var useScdBasedAck = false;
+
 	var numChannels = 8;
 
 	var buffers;
@@ -15,6 +17,10 @@ Engine_Ack : CroneEngine {
 	var delaySynth;
 	var reverbSynth;
 
+	var mainLevelGroup;
+	var mainLevelBus;
+	var mainLevelSynth;
+
 	var loopEnabled;
 
 	var channelSpecs;
@@ -27,6 +33,10 @@ Engine_Ack : CroneEngine {
 	var reverbRoomSpec;
 	var reverbDampSpec;
 	var reverbLevelSpec;
+	var mainLevelSpec;
+
+	var <scdBasedAckInstance;
+	var init, free, loadSampleCommand, multiTrigCommand, trigCommand, multiKillCommand, killCommand, includeInMuteGroupCommand, sampleStartCommand, sampleEndCommand, loopPointCommand, enableLoopCommand, disableLoopCommand, speedCommand, volumeCommand, volumeEnvAttackCommand, volumeEnvReleaseCommand, panCommand, filterCutoffCommand, filterResCommand, filterModeCommand, filterEnvAttackCommand, filterEnvReleaseCommand, filterEnvModCommand, distCommand, bitDepthCommand, delaySendCommand, reverbSendCommand, delayTimeCommand, delayFeedbackCommand, delayLevelCommand, reverbRoomCommand, reverbDampCommand, reverbLevelCommand, mainLevelCommand;
 
 	*new { |context, callback| ^super.new(context, callback) }
 
@@ -34,8 +44,17 @@ Engine_Ack : CroneEngine {
 	stereoSamplePlayerDefName { ^(this.class.name.asString++"_Stereo").asSymbol }
 	delayDefName { ^(this.class.name.asString++"_Delay").asSymbol }
 	reverbDefName { ^(this.class.name.asString++"_Reverb").asSymbol }
+	mainLevelDefName { ^(this.class.name.asString++"_MainLevel").asSymbol }
 
 	alloc {
+		if (useScdBasedAck) {
+			this.scdBasedAlloc;
+		} {
+			this.scBasedAlloc;
+		};
+	}
+
+	scBasedAlloc {
 		loopEnabled = Array.fill(8) { false };
 		channelSpecs = IdentityDictionary.new;
 		channelSpecs[\sampleStart] = \unipolar.asSpec;
@@ -63,7 +82,6 @@ Engine_Ack : CroneEngine {
 		channelSpecs[\sampleRate] = ControlSpec(0, 44100.0, default: 44100.0);
 		channelSpecs[\bitDepth] = ControlSpec(0, 32, default: 32);
 		channelSpecs[\dist] = \unipolar.asSpec;
-		// TODO slewSpec = ControlSpec(0, 5, default: 0);
 
 		delayTimeSpec = ControlSpec(0.0001, 5, 'exp', 0, 0.1, "secs");
 		delayFeedbackSpec = ControlSpec(0, 1.25);
@@ -72,6 +90,7 @@ Engine_Ack : CroneEngine {
 		reverbRoomSpec = \unipolar.asSpec.copy.default_(0.75);
 		reverbDampSpec = \unipolar.asSpec.copy.default_(0.5);
 		reverbLevelSpec = \db.asSpec.copy.default_(-10);
+		mainLevelSpec = \db.asSpec.copy.default_(0);
 
 		// TODO: there's too much code duplication between mono and stereo SynthDef, look into using SynthDef.wrap or splitting up SynthDef for DRY
 		SynthDef(
@@ -107,14 +126,6 @@ Engine_Ack : CroneEngine {
 				dist,
 				delaySend,
 				reverbSend
-				/*
-				TODO
-				speedSlew,
-				volumeSlew,
-				panSlew,
-				filterCutoffSlew,
-				filterResSlew,
-				*/
 				|
 				var direction = (sampleEnd-sampleStart).sign; // 1 = forward, -1 = backward
 				var leftmostSamplePosExtent = min(sampleStart, sampleEnd);
@@ -210,14 +221,6 @@ Engine_Ack : CroneEngine {
 					dist: channelSpecs[\dist],
 					delaySend: channelSpecs[\delaySend],
 					reverbSend: channelSpecs[\reverbSend]
-/*
-	TODO
-					speedSlew: slewSpec,
-					volumeSlew: slewSpec,
-					panSlew: slewSpec,
-					filterCutoffSlew: slewSpec,
-					filterResSlew: slewSpec,
-*/
 				)
 			)
 		).add;
@@ -255,14 +258,6 @@ Engine_Ack : CroneEngine {
 				dist,
 				delaySend,
 				reverbSend
-				/*
-				TODO
-				speedSlew,
-				volumeSlew,
-				panSlew,
-				filterCutoffSlew,
-				filterResSlew,
-				*/
 				|
 				var direction = (sampleEnd-sampleStart).sign; // 1 = forward, -1 = backward
 				var leftmostSamplePosExtent = min(sampleStart, sampleEnd);
@@ -358,14 +353,6 @@ Engine_Ack : CroneEngine {
 					dist: channelSpecs[\dist],
 					delaySend: channelSpecs[\delaySend],
 					reverbSend: channelSpecs[\reverbSend]
-/*
-	TODO
-					speedSlew: slewSpec,
-					volumeSlew: slewSpec,
-					panSlew: slewSpec,
-					filterCutoffSlew: slewSpec,
-					filterResSlew: slewSpec,
-*/
 				)
 			)
 		).add;
@@ -408,7 +395,23 @@ Engine_Ack : CroneEngine {
 			)
 		).add;
 
-		sourceGroup = ParGroup.tail(context.xg);
+		SynthDef(
+			this.mainLevelDefName,
+			{ |in, out, level|
+				var sig = In.ar(in, 2);
+				Out.ar(out, sig * level.dbamp);
+			},
+			rates: [nil, nil, 0.1],
+			metadata: (
+				specs: (
+					in: \audiobus,
+					out: \audiobus,
+					level: mainLevelSpec
+				)
+			)
+		).add;
+
+		sourceGroup = Group.tail(context.xg);
 		context.server.sync; // TODO: not sure this is needed?
 		channelGroups = numChannels collect: { Group.tail(sourceGroup) };
 		channelControlBusses = numChannels collect: {
@@ -437,13 +440,6 @@ Engine_Ack : CroneEngine {
 				filterHighpassLevel,
 				filterNotchLevel,
 				filterPeakLevel
-/*
-	TODO
-				volumeSlew,
-				panSlew,
-				filterCutoffSlew,
-				filterResSlew,
-*/
 			].collect { |sym|
 				var bus = Bus.control;
 
@@ -461,18 +457,22 @@ Engine_Ack : CroneEngine {
 				sym -> bus
 			}.asDict
 		};
-		effectsGroup = ParGroup.tail(context.xg);
+		effectsGroup = Group.tail(context.xg);
 
 		// TODO: weirdness buffers = numChannels collect: { Buffer.new };
 		buffers = numChannels collect: { Buffer.alloc(numFrames: 1) };
 
 		delayBus = Bus.audio(numChannels: 2);
 		reverbBus = Bus.audio(numChannels: 2);
+		mainLevelBus = Bus.audio(numChannels: 2);
 
 		context.server.sync;
 
-		delaySynth = Synth(this.delayDefName, [\out, context.out_b, \in, delayBus], target: effectsGroup);
-		reverbSynth = Synth(this.reverbDefName, [\out, context.out_b, \in, reverbBus], target: effectsGroup);
+		delaySynth = Synth(this.delayDefName, [\out, mainLevelBus, \in, delayBus], target: effectsGroup);
+		reverbSynth = Synth(this.reverbDefName, [\out, mainLevelBus, \in, reverbBus], target: effectsGroup);
+
+		mainLevelGroup = Group.tail(context.xg);
+		mainLevelSynth = Synth(this.mainLevelDefName, [\out, context.out_b, \in, mainLevelBus], target: mainLevelGroup);
 
 		samplePlayerSynths = Array.fill(numChannels);
 		muteGroups = Array.fill(numChannels, false);
@@ -514,14 +514,8 @@ Engine_Ack : CroneEngine {
 		this.addCommand(\reverbRoom, "f") { |msg| this.cmdReverbRoom(msg[1]) };
 		this.addCommand(\reverbDamp, "f") { |msg| this.cmdReverbDamp(msg[1]) };
 		this.addCommand(\reverbLevel, "f") { |msg| this.cmdReverbLevel(msg[1]) };
-/*
-	TODO
-		this.addCommand(\speedSlew, "if") { |msg| this.cmdSpeedSlew(msg[1], msg[2]) };
-		this.addCommand(\volumeSlew, "if") { |msg| this.cmdVolumeSlew(msg[1], msg[2]) };
-		this.addCommand(\panSlew, "if") { |msg| this.cmdPanSlew(msg[1], msg[2]) };
-		this.addCommand(\filterCutoffSlew, "if") { |msg| this.cmdFilterCutoffSlew(msg[1], msg[2]) };
-		this.addCommand(\filterResSlew, "if") { |msg| this.cmdFilterResSlew(msg[1], msg[2]) };
-*/
+
+		this.addCommand(\mainLevel, "f") { |msg| this.cmdMainLevel(msg[1]) };
 	}
 
 	cmdLoadSample { |channelnum, path|
@@ -540,7 +534,7 @@ Engine_Ack : CroneEngine {
 		if (this.sampleIsLoaded(channelnum)) {
 			var samplePlayerSynthArgs = [
 				\gate, 1,
-				\out, context.out_b,
+				\out, mainLevelBus,
 				\delayBus, delayBus,
 				\reverbBus, reverbBus,
 				\bufnum, buffers[channelnum]
@@ -626,25 +620,6 @@ Engine_Ack : CroneEngine {
 	cmdFilterCutoff { |channelnum, f|
 		channelControlBusses[channelnum][\filterCutoff].set(channelSpecs[\filterCutoff].constrain(f));
 	}
-
-/*
-	TODO
-	cmdSpeedSlew { |channelnum, f|
-		channelControlBusses[channelnum][\speedSlew].set(slewSpec.constrain(f));
-	}
-	cmdVolumeSlew { |channelnum, f|
-		channelControlBusses[channelnum][\volumeSlew].set(slewSpec.constrain(f));
-	}
-	cmdPanSlew { |channelnum, f|
-		channelControlBusses[channelnum][\panSlew].set(slewSpec.constrain(f));
-	}
-	cmdFilterCutoffSlew { |channelnum, f|
-		channelControlBusses[channelnum][\filterCutoffSlew].set(slewSpec.constrain(f));
-	}
-	cmdFilterResSlew { |channelnum, f|
-		channelControlBusses[channelnum][\filterResSlew].set(slewSpec.constrain(f));
-	}
-*/
 
 	cmdFilterRes { |channelnum, f|
 		channelControlBusses[channelnum][\filterRes].set(channelSpecs[\filterRes].constrain(f));
@@ -746,6 +721,10 @@ Engine_Ack : CroneEngine {
 		reverbSynth.set(\level, reverbLevelSpec.constrain(f));
 	}
 
+	cmdMainLevel { |f|
+		mainLevelSynth.set(\level, mainLevelSpec.constrain(f));
+	}
+
 	killChannel { |channelnum|
 		channelGroups[channelnum].set(\gate, 0);
 	}
@@ -763,6 +742,14 @@ Engine_Ack : CroneEngine {
 	}
 
 	free {
+		if (useScdBasedAck) {
+			this.scdBasedFree;
+		} {
+			this.scBasedFree;
+		}
+	}
+
+	scBasedFree {
 		samplePlayerSynths do: _.free;
 		channelGroups do: _.free;
 		channelControlBusses do: { |dict| dict do: _.free };
@@ -773,6 +760,10 @@ Engine_Ack : CroneEngine {
 		reverbBus.free;
 		delaySynth.free;
 		reverbSynth.free;
+
+		mainLevelBus.free;
+		mainLevelGroup.free;
+		mainLevelSynth.free;
 	}
 
 	sampleIsLoaded { |channelnum| ^buffers[channelnum].path.notNil }
@@ -812,5 +803,107 @@ Engine_Ack : CroneEngine {
 			"Invalid argument (%) to loadSample, channelnum must be between 0 and %"
 				.format(channelnum, numChannels-1).error;
 		};
+	}
+
+	// new scd based engine logic below. sc based one (above) to be phased out.
+
+	getScdBasedEngine {
+		var scdFilePath = (PathName(this.class.filenameSymbol.asString).pathOnly +/+ ".." +/+ "ack.scd").standardizePath;
+
+		^thisProcess.interpreter.executeFile(scdFilePath);
+	}
+
+	scdBasedAlloc {
+		var scdAPI = this.getScdBasedEngine;
+		init = scdAPI[\init];
+		free = scdAPI[\free];
+		loadSampleCommand = scdAPI[\loadSampleCommand];
+		multiTrigCommand = scdAPI[\multiTrigCommand];
+		trigCommand = scdAPI[\trigCommand];
+		multiKillCommand = scdAPI[\multiKillCommand];
+		killCommand = scdAPI[\killCommand];
+		includeInMuteGroupCommand = scdAPI[\includeInMuteGroupCommand];
+		sampleStartCommand = scdAPI[\sampleStartCommand];
+		sampleEndCommand = scdAPI[\sampleEndCommand];
+		loopPointCommand = scdAPI[\loopPointCommand];
+		enableLoopCommand = scdAPI[\enableLoopCommand];
+		disableLoopCommand = scdAPI[\disableLoopCommand];
+		speedCommand = scdAPI[\speedCommand];
+		volumeCommand = scdAPI[\volumeCommand];
+		volumeEnvAttackCommand = scdAPI[\volumeEnvAttackCommand];
+		volumeEnvReleaseCommand = scdAPI[\volumeEnvReleaseCommand];
+		panCommand = scdAPI[\panCommand];
+		filterCutoffCommand = scdAPI[\filterCutoffCommand];
+		filterResCommand = scdAPI[\filterResCommand];
+		filterModeCommand = scdAPI[\filterModeCommand];
+		filterEnvAttackCommand = scdAPI[\filterEnvAttackCommand];
+		filterEnvReleaseCommand = scdAPI[\filterEnvReleaseCommand];
+		filterEnvModCommand = scdAPI[\filterEnvModCommand];
+		distCommand = scdAPI[\distCommand];
+		bitDepthCommand = scdAPI[\bitDepthCommand];
+		delaySendCommand = scdAPI[\delaySendCommand];
+		reverbSendCommand = scdAPI[\reverbSendCommand];
+
+		delayTimeCommand = scdAPI[\delayTimeCommand];
+		delayFeedbackCommand = scdAPI[\delayFeedbackCommand];
+		delayLevelCommand = scdAPI[\delayLevelCommand];
+		reverbRoomCommand = scdAPI[\reverbRoomCommand];
+		reverbDampCommand = scdAPI[\reverbDampCommand];
+		reverbLevelCommand = scdAPI[\reverbLevelCommand];
+
+		mainLevelCommand = scdAPI[\mainLevelCommand];
+
+		scdBasedAckInstance=init.(
+			(
+				trace: false,
+				group: context.xg,
+				outBus: context.out_b
+			)
+		);
+
+		this.addCommands;
+	}
+
+	addCommands {
+		this.addCommand(\loadSample, "is") { |msg| loadSampleCommand.value(msg[1], msg[2]) };
+		this.addCommand(\multiTrig, "iiiiiiii") { |msg| multiTrigCommand.value(msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7], msg[8]) };
+		this.addCommand(\trig, "i") { |msg| trigCommand.value(msg[1]) };
+		this.addCommand(\multiKill, "iiiiiiii") { |msg| multiKillCommand.value(msg[1], msg[2], msg[3], msg[4], msg[5], msg[6], msg[7], msg[8]) };
+		this.addCommand(\kill, "i") { |msg| killCommand.value(msg[1]) };
+		this.addCommand(\includeInMuteGroup, "ii") { |msg| includeInMuteGroupCommand.value(msg[1], msg[2]) };
+		this.addCommand(\sampleStart, "if") { |msg| sampleStartCommand.value(msg[1], msg[2]) };
+		this.addCommand(\sampleEnd, "if") { |msg| sampleEndCommand.value(msg[1], msg[2]) };
+		this.addCommand(\loopPoint, "if") { |msg| loopPointCommand.value(msg[1], msg[2]) };
+		this.addCommand(\enableLoop, "i") { |msg| enableLoopCommand.value(msg[1]) };
+		this.addCommand(\disableLoop, "i") { |msg| disableLoopCommand.value(msg[1]) };
+		this.addCommand(\speed, "if") { |msg| speedCommand.value(msg[1], msg[2]) };
+		this.addCommand(\volume, "if") { |msg| volumeCommand.value(msg[1], msg[2]) };
+		this.addCommand(\volumeEnvAttack, "if") { |msg| volumeEnvAttackCommand.value(msg[1], msg[2]) };
+		this.addCommand(\volumeEnvRelease, "if") { |msg| volumeEnvReleaseCommand.value(msg[1], msg[2]) };
+		this.addCommand(\pan, "if") { |msg| panCommand.value(msg[1], msg[2]) };
+		this.addCommand(\filterCutoff, "if") { |msg| filterCutoffCommand.value(msg[1], msg[2]) };
+		this.addCommand(\filterRes, "if") { |msg| filterResCommand.value(msg[1], msg[2]) };
+		this.addCommand(\filterMode, "ii") { |msg| filterModeCommand.value(msg[1], msg[2]) };
+		this.addCommand(\filterEnvAttack, "if") { |msg| filterEnvAttackCommand.value(msg[1], msg[2]) };
+		this.addCommand(\filterEnvRelease, "if") { |msg| filterEnvReleaseCommand.value(msg[1], msg[2]) };
+		this.addCommand(\filterEnvMod, "if") { |msg| filterEnvModCommand.value(msg[1], msg[2]) };
+		this.addCommand(\dist, "if") { |msg| distCommand.value(msg[1], msg[2]) };
+		this.addCommand(\bitDepth, "if") { |msg| bitDepthCommand.value(msg[1], msg[2]) };
+		this.addCommand(\dist, "if") { |msg| distCommand.value(msg[1], msg[2]) };
+		this.addCommand(\delaySend, "if") { |msg| delaySendCommand.value(msg[1], msg[2]) };
+		this.addCommand(\reverbSend, "if") { |msg| reverbSendCommand.value(msg[1], msg[2]) };
+
+		this.addCommand(\delayTime, "f") { |msg| delayTimeCommand.value(msg[1]) };
+		this.addCommand(\delayFeedback, "f") { |msg| delayFeedbackCommand.value(msg[1]) };
+		this.addCommand(\delayLevel, "f") { |msg| delayLevelCommand.value(msg[1]) };
+		this.addCommand(\reverbRoom, "f") { |msg| reverbRoomCommand.value(msg[1]) };
+		this.addCommand(\reverbDamp, "f") { |msg| reverbDampCommand.value(msg[1]) };
+		this.addCommand(\reverbLevel, "f") { |msg| reverbLevelCommand.value(msg[1]) };
+
+		this.addCommand(\mainLevel, "f") { |msg| mainLevelCommand.value(msg[1]) };
+	 }
+
+	scdBasedFree {
+		free.(scdBasedAckInstance);
 	}
 }
