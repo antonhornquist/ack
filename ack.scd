@@ -209,7 +209,7 @@ var sendMainLevelSynthDefToServer = { |instance|
 			specs: (
 				in: \audiobus,
 				out: \audiobus,
-				level: mainLevelSpec // TODO: does not match with ugenGraphFunc arguments!?
+				level: mainLevelSpec
 			)
 		)
 	).add;
