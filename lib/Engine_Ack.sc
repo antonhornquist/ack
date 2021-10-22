@@ -36,7 +36,7 @@ Engine_Ack : CroneEngine {
 	var mainLevelSpec;
 
 	var <scdBasedAckInstance;
-	var init, free, loadSampleCommand, multiTrigCommand, trigCommand, multiKillCommand, killCommand, includeInMuteGroupCommand, sampleStartCommand, sampleEndCommand, loopPointCommand, enableLoopCommand, disableLoopCommand, speedCommand, volumeCommand, volumeEnvAttackCommand, volumeEnvReleaseCommand, panCommand, filterCutoffCommand, filterResCommand, filterModeCommand, filterEnvAttackCommand, filterEnvReleaseCommand, filterEnvModCommand, distCommand, bitDepthCommand, delaySendCommand, reverbSendCommand, delayTimeCommand, delayFeedbackCommand, delayLevelCommand, reverbRoomCommand, reverbDampCommand, reverbLevelCommand, mainLevelCommand;
+	var init, free, loadSampleCommand, multiTrigCommand, trigCommand, multiKillCommand, killCommand, includeInMuteGroupCommand, sampleStartCommand, sampleEndCommand, loopPointCommand, enableLoopCommand, disableLoopCommand, speedCommand, volumeCommand, volumeEnvAttackCommand, volumeEnvReleaseCommand, panCommand, filterCutoffCommand, filterResCommand, filterModeCommand, filterEnvAttackCommand, filterEnvReleaseCommand, filterEnvModCommand, distCommand, sampleRateCommand, bitDepthCommand, delaySendCommand, reverbSendCommand, delayTimeCommand, delayFeedbackCommand, delayLevelCommand, reverbRoomCommand, reverbDampCommand, reverbLevelCommand, mainLevelCommand;
 
 	*new { |context, callback| ^super.new(context, callback) }
 
@@ -840,6 +840,7 @@ Engine_Ack : CroneEngine {
 		filterEnvReleaseCommand = scdAPI[\filterEnvReleaseCommand];
 		filterEnvModCommand = scdAPI[\filterEnvModCommand];
 		distCommand = scdAPI[\distCommand];
+		sampleRateCommand = scdAPI[\sampleRateCommand];
 		bitDepthCommand = scdAPI[\bitDepthCommand];
 		delaySendCommand = scdAPI[\delaySendCommand];
 		reverbSendCommand = scdAPI[\reverbSendCommand];
@@ -889,7 +890,7 @@ Engine_Ack : CroneEngine {
 		this.addCommand(\filterEnvMod, "if") { |msg| filterEnvModCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
 		this.addCommand(\dist, "if") { |msg| distCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
 		this.addCommand(\bitDepth, "if") { |msg| bitDepthCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
-		this.addCommand(\dist, "if") { |msg| distCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
+		this.addCommand(\sampleRate, "if") { |msg| sampleRateCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
 		this.addCommand(\delaySend, "if") { |msg| delaySendCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
 		this.addCommand(\reverbSend, "if") { |msg| reverbSendCommand.value(scdBasedAckInstance, msg[1], msg[2]) };
 
